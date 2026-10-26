@@ -1,0 +1,12 @@
+{
+  "id": "offline-civic-compat-v1",
+  "brief": "Design a 24-hour hackathon prototype that helps neighborhood volunteers coordinate safe water collection after a flood. The demo must run without internet access, use only invented sample data, and work for screen-reader users. No personal names or phone numbers may be collected.",
+  "target_beneficiaries": ["neighborhood volunteers", "residents at collection points"],
+  "build_time_hours": 24,
+  "hard_constraints": [
+    { "id": "offline_only", "text": "No internet or cloud dependency in the demo." },
+    { "id": "synthetic_data", "text": "Use invented sample data only; do not collect personal names or phone numbers." },
+    { "id": "accessible", "text": "The interaction must work with a screen reader." }
+  ],
+  "disallowed_phrases": ["cloud api", "upload names", "collect phone numbers", "online dashboard"]
+}

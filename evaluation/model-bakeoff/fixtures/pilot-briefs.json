@@ -1,0 +1,42 @@
+{
+  "version": "m2a-model-selection-pilot-v1",
+  "formal_holdout": false,
+  "briefs": [
+    {
+      "id": "flood-water-offline",
+      "domain": "civic resilience",
+      "brief": "Build a 24-hour prototype for neighborhood volunteers coordinating safe water collection after a flood. The demo must work offline with invented data and a screen reader. Do not collect names or phone numbers.",
+      "hard_constraints": ["offline_only", "synthetic_data", "accessible"]
+    },
+    {
+      "id": "farm-input-low-resource",
+      "domain": "agriculture",
+      "brief": "Help smallholder farmers decide how to share a scarce irrigation pump during a two-day hackathon. Assume no sensor feed, no reliable mobile data, and a low-cost shared device. Show a fair allocation demo.",
+      "hard_constraints": ["no_sensor_feed", "intermittent_connectivity", "shared_device"]
+    },
+    {
+      "id": "school-practice-access",
+      "domain": "education",
+      "brief": "Design a one-day build that helps teachers spot which arithmetic misconception to address next. Use only synthetic class examples, support screen readers, and avoid a generic chat tutor. Demonstrate a specific feedback loop.",
+      "hard_constraints": ["synthetic_student_data", "accessible", "non_chat_mechanism"]
+    },
+    {
+      "id": "clinic-followup-privacy",
+      "domain": "health operations",
+      "brief": "A clinic wants a 30-hour prototype for missed follow-up handoffs. Do not diagnose, use only fictitious records, and keep personal health details off third-party APIs. The demo must show safe escalation and uncertainty.",
+      "hard_constraints": ["no_diagnosis", "fictitious_records", "no_external_health_data"]
+    },
+    {
+      "id": "merchant-dispute-evidence",
+      "domain": "financial access",
+      "brief": "Build a two-day prototype that helps informal merchants resolve disputed payments. No live bank integration, no real transaction data, and an auditable explanation are mandatory. Judges value demonstrability over a dashboard.",
+      "hard_constraints": ["no_live_bank", "synthetic_transactions", "auditable_explanation"]
+    },
+    {
+      "id": "web3-grant-eligibility",
+      "domain": "developer tools",
+      "brief": "Build a 36-hour prototype for open-source teams checking eligibility for a fictional Web3 grant. Use a local fixture instead of scraping live grant pages. Require a reproducible rules trace, no wallet connection, and a concrete demo.",
+      "hard_constraints": ["local_rules_fixture", "no_wallet_connection", "rules_trace"]
+    }
+  ]
+}

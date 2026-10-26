@@ -15,6 +15,7 @@
     "lint": "node scripts/check-format.mjs && pnpm typography:check",
     "typecheck": "tsc --build",
     "test": "vitest run",
+    "test:model-bakeoff": "node --test evaluation/model-bakeoff/runner.test.mjs",
     "test:db": "python scripts/test-migration.py",
     "test:contracts": "vitest run tests/contract",
     "test:smoke": "vitest run tests/integration",
@@ -22,7 +23,7 @@
     "contracts:check": "node scripts/check-contract-drift.mjs",
     "security:secrets": "node scripts/check-secrets.mjs",
     "typography:check": "node scripts/check-no-emdash.mjs",
-    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm test:db && pnpm contracts:check && pnpm security:secrets && pnpm build && pnpm typography:check"
+    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm test:model-bakeoff && pnpm test:db && pnpm contracts:check && pnpm security:secrets && pnpm build && pnpm typography:check"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",
