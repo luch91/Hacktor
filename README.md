@@ -97,4 +97,4 @@ U+2014 is forbidden in repository text and generated output. `pnpm typography:ch
 
 ## Ownership
 
-The authorized GitHub account is `luch91`. The exact remote repository and valid GitHub authentication still need verification before the first push. Cloudflare authorization does not itself authorize provisioning, deployment, DNS changes, or production release.
+The authorized GitHub repository is `luch91/Hacktor`. The authorized Cloudflare account is `Judithorluchee@gmail.com's Account`. Account authorization does not itself authorize provisioning, deployment, DNS changes, or production release.

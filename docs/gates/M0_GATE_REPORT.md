@@ -2,7 +2,7 @@
 
 **Milestone:** M0
 **Date:** 26 October 2026
-**Decision:** CONDITIONAL GO pending rotated-token verification and Cloudflare account selection
+**Decision:** CONDITIONAL GO pending compromised-token revocation and owner approval
 **Production status:** Not deployed and not authorized for deployment
 
 ## Delivered
@@ -65,7 +65,7 @@ The clean-room install and complete local gate passed before any remote mutation
 | GitHub credential discovery | PASS | `gh api user --jq .login` returned `luch91`; keyring token includes `repo` and `workflow` scopes |
 | Git write access | PASS | Root M0 commit `5a9c97160c14178d5736c74738e07bfc1e40c69c` created on `main` |
 | GitHub Actions | PASS | Hosted run `40277359090` completed successfully in 34 seconds for the root M0 commit |
-| Cloudflare account access | PARTIAL | Wrangler 4.129.0 verified encrypted OAuth access and returned two accounts; no rotated API token is present and the intended account has not been selected |
+| Cloudflare account access | PASS | Wrangler 4.129.0 device authorization completed; `whoami` returned only `Judithorluchee@gmail.com's Account`, account ID `0a8fd0acd086e68c9b558159fac0d7a8` |
 
 The clean-room commands used the exact pinned Vite 8.2.2, Vitest 4.1.7, and Wrangler 4.129.0 toolchain. GitHub Actions independently confirmed the same frozen lockfile and full `pnpm verify` command. The README CI badge was added only after that successful run.
 
@@ -111,7 +111,8 @@ The interactive browser-control surface was unavailable, so screenshots and DOM 
 ## Security and operations
 
 - No secret value is present in source or examples.
-- The previously exposed Cloudflare token is classified as compromised. It was not reused during remediation and must never be reused. No Cloudflare credential environment variable is present.
+- The previously exposed Cloudflare token is classified as compromised. It was not reused during remediation and must never be reused. Disposal remains a dashboard action because the refreshed Wrangler OAuth session does not grant API token administration.
+- Refreshed Wrangler OAuth credentials are encrypted at rest through Windows Credential Manager.
 - Deployment workflows require a repository variable, protected environment, secrets, explicit manual dispatch, and non-placeholder D1 identifiers.
 - Production deploy additionally requires the exact `DEPLOY_PRODUCTION` input.
 - `workers_dev` and preview URLs are disabled in checked-in Worker configurations.
@@ -121,12 +122,12 @@ The interactive browser-control surface was unavailable, so screenshots and DOM 
 ## Outstanding work and blocked prerequisites
 
 - GitHub owner, authenticated identity, repository, root commit, and hosted CI execution are verified.
-- Cloudflare OAuth access is verified, but Wrangler returned both `GenScope` and `Judithorluchee@gmail.com's Account`. The intended account must be selected explicitly before any future resource operation.
-- A rotated Cloudflare API token was not supplied through the environment, so the requested token-specific verification remains open. The compromised token was not reused.
+- Cloudflare OAuth access and the intended account are verified. No Cloudflare resource inventory or mutation was performed.
+- The compromised API token must be deleted or rolled from `https://dash.cloudflare.com/profile/api-tokens`; the compromised secret was not reused to revoke itself.
 - Staging and production D1 UUIDs remain deliberate placeholders.
 
 ## Owner decision required
 
-Do not advance to M1 or deploy. Supply a newly rotated Cloudflare token through a secure environment secret and identify the intended account by name or account ID. Verify only identity and token permissions. Do not provision Cloudflare resources or replace environment placeholders as part of account verification.
+Do not advance to M1 or deploy. Delete or roll the compromised API token from the Cloudflare dashboard, then explicitly approve or reject the M0 gate. Do not provision Cloudflare resources or replace environment placeholders as part of token disposal.
 
-**Gate decision:** CONDITIONAL GO for the M0 foundation. NO GO for Cloudflare resource operations, remote deployment, production, or M1 advancement until rotated-token verification and account selection are complete and the owner explicitly approves the gate.
+**Gate decision:** CONDITIONAL GO for the M0 foundation. NO GO for Cloudflare resource operations, remote deployment, production, or M1 advancement until compromised-token revocation is confirmed and the owner explicitly approves the gate.

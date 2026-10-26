@@ -18,8 +18,8 @@ The source handoff's OpenAPI document, Idea Card JSON schema, and D1 migration a
 
 ## Cloudflare account state
 
-Wrangler authentication is being verified. No resource inventory, provisioning, route, Worker upload, database mutation, Queue mutation, DNS update, or domain action is authorized by M0 implementation alone.
+Wrangler 4.129.0 OAuth authentication is verified for `Judithorluchee@gmail.com's Account`, account ID `0a8fd0acd086e68c9b558159fac0d7a8`. Credentials are encrypted at rest through Windows Credential Manager. No resource inventory, provisioning, route, Worker upload, database mutation, Queue mutation, DNS update, or domain action is authorized by M0 implementation alone.
 
 ## GitHub state
 
-The authorized owner is `luch91`. Cached authentication for that account was invalid during the initial inventory, and no Git remote exists. CI and deploy workflows are local files only until authentication, exact repository name, first push, and workflow results are verified.
+The authorized owner is `luch91`. The private `luch91/Hacktor` repository, `main` branch, and GitHub Actions CI are verified. Deployment workflows remain manual and disabled by their production safeguards.
