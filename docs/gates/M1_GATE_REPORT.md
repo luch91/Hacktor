@@ -67,8 +67,9 @@ No guest capability or CSRF token was recorded in this report.
 | `pnpm test:ui` | PASS, 4 tests across desktop, mobile 390px, mobile 320px, and tablet 768px in 51.3 seconds |
 | Fresh clone `pnpm install --frozen-lockfile` | PASS, 86 packages from the committed lockfile |
 | Fresh clone `pnpm verify` | PASS, exit code 0 from commit `796d8e2` |
+| GitHub Actions CI | PASS for SHA `aa0b7823122e10760331ee1035c472230ec62dd4`; locked install, M1 verification, Chromium install, and responsive journeys all succeeded. [Run 40287692944](https://github.com/luch91/Hacktor/actions/runs/40287692944) |
 
-GitHub Actions and draft pull request evidence are added after the reviewed branch is pushed.
+Draft pull request: [luch91/Hacktor#1](https://github.com/luch91/Hacktor/pull/1).
 
 ## Visual evidence
 
