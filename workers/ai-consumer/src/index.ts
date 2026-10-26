@@ -1,5 +1,6 @@
 import type { JobQueueMessage } from '@hacktor/contracts';
-import { markJobFailure, processStudioJob } from './processor';
+import { processStudioJob } from './processor';
+import type { ProviderSettings } from './provider';
 
 export default {
   async queue(batch: MessageBatch<JobQueueMessage>, env: Env): Promise<void> {
@@ -10,14 +11,13 @@ export default {
     }
     for (const message of batch.messages) {
       try {
-        const result = await processStudioJob(message.body, env.DB);
+        const result = await processStudioJob(message.body, env.DB, env as Env & ProviderSettings);
         console.log(JSON.stringify({ message: 'studio job handled', ...result }));
-        message.ack();
-      } catch (error) {
-        const retry = await markJobFailure(env.DB, message.body.job_id, error);
-        console.error(JSON.stringify({ message: 'studio job failed', job_id: message.body.job_id, retry, error: error instanceof Error ? error.message : String(error) }));
-        if (retry) message.retry({ delaySeconds: 60 });
+        if (result.status === 'retry_wait') message.retry({ delaySeconds: 60 });
         else message.ack();
+      } catch (error) {
+        console.error(JSON.stringify({ message: 'queue delivery failed before job claim', job_id: message.body.job_id, error: error instanceof Error ? error.message : String(error) }));
+        message.retry({ delaySeconds: 60 });
       }
     }
   },

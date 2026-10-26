@@ -7,13 +7,11 @@ import {
   validateIdeaCard,
 } from '@hacktor/contracts';
 import {
-  buildBlueprint,
   combineIdeas,
   critiqueIdea,
   evolveIdea,
-  generateDeterministicSlate,
-  ideationStages,
 } from '@hacktor/ideation';
+import { processStudioJob } from '../../../workers/ai-consumer/src/processor';
 
 const COOKIE_SESSION = 'hacktor_session';
 const COOKIE_CSRF = 'hacktor_csrf';
@@ -257,91 +255,6 @@ async function recordSessionStage(db: D1Database, sessionId: string, stage: stri
   ).bind(sessionId, stage, status, JSON.stringify(artifact)).run();
 }
 
-async function completeLocalDeterministicJob(env: Env, jobId: string, session: SessionRow, jobType: string, payload: JsonObject): Promise<void> {
-  const context = JSON.parse(session.context_json) as SessionContext;
-  const artifactIds: string[] = [];
-  const statements: D1PreparedStatement[] = [];
-  if (jobType === 'diverse_slate') {
-    const existing = await env.DB.prepare('SELECT card_json FROM idea_versions WHERE session_id = ?').bind(session.id).all<{ card_json: string }>();
-    const signatures = new Set(existing.results.map((row) => {
-      const card = JSON.parse(row.card_json) as Partial<IdeaCardV1>;
-      return `${card.problem || ''}\n${card.mechanism || ''}`;
-    }));
-    const slate = generateDeterministicSlate(context);
-    for (const card of slate) {
-      const signature = `${card.problem}\n${card.mechanism}`;
-      if (signatures.has(signature)) continue;
-      signatures.add(signature);
-      const ideaId = crypto.randomUUID();
-      artifactIds.push(ideaId);
-      statements.push(env.DB.prepare(
-        'INSERT INTO idea_versions (id,session_id,strategy,card_json,schema_version) VALUES (?,?,?,?,?)',
-      ).bind(ideaId, session.id, card.strategy, JSON.stringify(card), card.schema_version));
-    }
-    if (artifactIds.length > 0) {
-      for (const card of slate.slice(0, 3)) {
-        statements.push(env.DB.prepare(
-          'INSERT INTO opportunity_hypotheses (id,session_id,problem,beneficiary,assumption,evidence_refs_json) VALUES (?,?,?,?,?,?)',
-        ).bind(crypto.randomUUID(), session.id, card.problem, card.target_user, card.novelty_hypothesis, '[]'));
-      }
-    }
-  }
-  if (jobType === 'validation' && typeof payload.idea_version_id === 'string') {
-    const scorecardId = crypto.randomUUID();
-    artifactIds.push(scorecardId);
-    statements.push(env.DB.prepare(
-      `INSERT INTO scorecards
-       (id,idea_version_id,rubric_version,coverage_status,observed_overlap,sample_count,score_json,evidence_json)
-       VALUES (?,?,'m1-v1','partial','insufficient_evidence',0,?,?)`,
-    ).bind(scorecardId, payload.idea_version_id, JSON.stringify({ buildability: 'requires_builder_review', differentiation: 'hypothesis_only' }), '[]'));
-  }
-  if (jobType === 'blueprint' && typeof payload.idea_version_id === 'string') {
-    const row = await env.DB.prepare('SELECT card_json FROM idea_versions WHERE id = ? AND session_id = ?')
-      .bind(payload.idea_version_id, session.id).first<{ card_json: string }>();
-    if (!row) throw new Error('Blueprint idea version was not found in the job session');
-    const blueprintId = crypto.randomUUID();
-    artifactIds.push(blueprintId);
-    statements.push(env.DB.prepare(
-      'INSERT INTO blueprints (id,idea_version_id,source_manifest_json,content_markdown,review_required) VALUES (?,?,?,?,1)',
-    ).bind(blueprintId, payload.idea_version_id, '[]', buildBlueprint(JSON.parse(row.card_json) as IdeaCardV1, payload.idea_version_id)));
-  }
-  const requestedStages = jobType === 'validation'
-    ? ideationStages.filter((stage) => stage === 'research' || stage === 'converge')
-    : jobType === 'blueprint'
-      ? ideationStages.filter((stage) => stage === 'blueprint')
-      : ideationStages;
-  for (const [index, stage] of requestedStages.entries()) {
-    const supported = stage === 'understand'
-      || stage === 'map'
-      || (stage === 'diverge' && jobType === 'diverse_slate')
-      || (jobType === 'validation' && (stage === 'research' || stage === 'converge'))
-      || (jobType === 'blueprint' && stage === 'blueprint');
-    const blockedReason = stage === 'interrogate' || stage === 'evolve'
-      ? 'Requires a builder-selected idea action.'
-      : stage === 'research'
-        ? 'Automated sources are disabled; use evidence actions and validation to assess coverage.'
-        : stage === 'converge'
-          ? 'Requires builder selection and evidence-aware validation.'
-          : stage === 'blueprint'
-            ? 'Requires one selected immutable idea version.'
-            : 'Not requested by this job.';
-    statements.push(env.DB.prepare(
-      `INSERT INTO session_stage_runs (session_id,stage,status,artifact_json,updated_at) VALUES (?,?,?,?,datetime('now'))
-       ON CONFLICT(session_id,stage) DO UPDATE SET status = excluded.status,artifact_json = excluded.artifact_json,updated_at = datetime('now')`,
-    ).bind(session.id, stage, supported ? 'completed' : 'blocked', JSON.stringify(supported ? { artifact_ids: stage === 'diverge' || stage === 'blueprint' || stage === 'converge' ? artifactIds : [] } : { reason: blockedReason })));
-    if (supported) {
-      statements.push(env.DB.prepare(
-        `INSERT OR IGNORE INTO generation_runs
-         (id,job_id,stage,provider,model_id,schema_version,prompt_version,response_status,usage_json,duration_ms)
-         VALUES (?,?,?,?,?,?,?,?,?,?)`,
-      ).bind(crypto.randomUUID(), jobId, stage, 'deterministic_test_adapter', 'hacktor-fixture-v1', '1.0', 'm1-deterministic-v1', 'valid', '{}', 0));
-    }
-  }
-  statements.push(env.DB.prepare(
-    "UPDATE jobs SET status = 'completed',stage = ?,result_json = ?,progress_json = ?,updated_at = datetime('now') WHERE id = ?",
-  ).bind(jobType === 'opportunity_map' ? 'map' : jobType === 'validation' ? 'converge' : jobType === 'blueprint' ? 'blueprint' : 'diverge', JSON.stringify({ artifact_ids: artifactIds, inference_mode: 'deterministic_test_adapter' }), JSON.stringify({ stage_index: jobType === 'opportunity_map' ? 2 : jobType === 'diverse_slate' ? 3 : 8, stage_count: 8 }), jobId));
-  await env.DB.batch(statements);
-}
 
 export async function dispatchPendingOutbox(env: Env): Promise<number> {
   const pending = await env.DB.prepare(
@@ -360,6 +273,26 @@ export async function dispatchPendingOutbox(env: Env): Promise<number> {
       await env.DB.prepare('UPDATE job_outbox SET publish_attempts = publish_attempts + 1 WHERE job_id = ?')
         .bind(row.job_id).run();
       console.error(JSON.stringify({ message: 'outbox dispatch failed', job_id: row.job_id, error: error instanceof Error ? error.message : String(error) }));
+    }
+  }
+  const recoverable = await env.DB.prepare(
+    `SELECT id,attempt_count,max_attempts FROM jobs
+     WHERE status = 'retry_wait' OR (status = 'running' AND datetime(lease_expires_at) <= datetime('now'))
+     ORDER BY updated_at LIMIT 25`,
+  ).all<{ id: string; attempt_count: number; max_attempts: number }>();
+  for (const job of recoverable.results) {
+    if (job.attempt_count >= job.max_attempts) {
+      await env.DB.prepare(
+        `UPDATE jobs SET status = 'failed',lease_token = NULL,lease_expires_at = NULL,
+         error_json = ?,updated_at = datetime('now') WHERE id = ? AND status IN ('running','retry_wait')`,
+      ).bind(JSON.stringify({ code: 'attempts_exhausted', message: 'The job did not complete after its allowed attempts.', retryable: false }), job.id).run();
+      continue;
+    }
+    try {
+      await env.AI_JOBS.send({ job_id: job.id, schema_version: '1.0' } satisfies JobQueueMessage, { contentType: 'json' });
+      published += 1;
+    } catch (error) {
+      console.error(JSON.stringify({ message: 'job recovery dispatch failed', job_id: job.id, error: error instanceof Error ? error.message : String(error) }));
     }
   }
   return published;
@@ -400,11 +333,15 @@ async function enqueueJob(
   if ((recent?.count || 0) >= 20) throw new ApiFailure(429, 'hourly_usage_limit', 'The hourly job limit has been reached.', true);
   const jobId = crypto.randomUUID();
   const outboxId = crypto.randomUUID();
+  const inferenceMode: string = env.INFERENCE_MODE;
+  if (inferenceMode !== 'deterministic' && inferenceMode !== 'live') {
+    throw new ApiFailure(503, 'inference_unavailable', 'Inference mode is not configured for this environment.');
+  }
   await env.DB.batch([
     env.DB.prepare(
-      `INSERT INTO jobs (id,session_id,owner_key,job_type,status,stage,request_json,request_hash,progress_json)
-       VALUES (?,?,?,?,'queued','understand',?,?,?)`,
-    ).bind(jobId, session.id, owner.owner_key, jobType, requestJson, requestHash, JSON.stringify({ stage_index: 0, stage_count: 8 })),
+      `INSERT INTO jobs (id,session_id,owner_key,job_type,status,stage,request_json,request_hash,progress_json,inference_mode)
+       VALUES (?,?,?,?,'queued','understand',?,?,?,?)`,
+    ).bind(jobId, session.id, owner.owner_key, jobType, requestJson, requestHash, JSON.stringify({ stage_index: 0, stage_count: 8 }), inferenceMode),
     env.DB.prepare('INSERT INTO job_outbox (id,job_id) VALUES (?,?)').bind(outboxId, jobId),
     env.DB.prepare(
       'INSERT INTO idempotency_keys (owner_key,route_key,client_key,request_hash,job_id) VALUES (?,?,?,?,?)',
@@ -419,7 +356,12 @@ async function enqueueJob(
   } catch (error) {
     console.error(JSON.stringify({ message: 'queue publish deferred to outbox', job_id: jobId, error: error instanceof Error ? error.message : String(error) }));
   }
-  if (env.HACKTOR_ENV === 'local') await completeLocalDeterministicJob(env, jobId, session, jobType, payload);
+  if (env.HACKTOR_ENV === 'local' && env.INFERENCE_MODE === 'deterministic') {
+    const result = await processStudioJob(message, env.DB, { INFERENCE_MODE: env.INFERENCE_MODE });
+    if (result.status !== 'completed' && result.status !== 'duplicate') {
+      console.error(JSON.stringify({ message: 'local studio job did not complete', job_id: jobId, status: result.status }));
+    }
+  }
   return json({ job_id: jobId, status: 'queued' }, 202);
 }
 
@@ -432,23 +374,54 @@ async function handleIdeaAction(request: Request, env: Env, owner: Owner, ideaId
   const routeKey = `ideas/${idea.id}/actions/${body.command}`;
   const requestHash = await sha256(JSON.stringify(body));
   const prior = await env.DB.prepare(
-    'SELECT request_hash,response_json FROM action_idempotency_keys WHERE owner_key = ? AND route_key = ? AND client_key = ?',
-  ).bind(owner.owner_key, routeKey, clientKey).first<{ request_hash: string; response_json: string | null }>();
+    'SELECT request_hash,response_json,action_id,lease_expires_at FROM action_idempotency_keys WHERE owner_key = ? AND route_key = ? AND client_key = ?',
+  ).bind(owner.owner_key, routeKey, clientKey).first<{ request_hash: string; response_json: string | null; action_id: string | null; lease_expires_at: string | null }>();
   if (prior) {
     if (!(await safeEqual(prior.request_hash, requestHash))) throw new ApiFailure(409, 'idempotency_conflict', 'The idempotency key was already used with a different request.');
-    if (!prior.response_json) throw new ApiFailure(409, 'action_in_progress', 'The original action is still being processed.', true);
-    return json(JSON.parse(prior.response_json));
+    if (prior.response_json) return json(JSON.parse(prior.response_json));
+    if (prior.action_id) {
+      const committed = await env.DB.prepare('SELECT id,command,action_json,result_version_id FROM idea_actions WHERE id = ? AND session_id = ?')
+        .bind(prior.action_id, idea.session_id).first<{ id: string; command: string; action_json: string | null; result_version_id: string | null }>();
+      if (committed) {
+        let response: Record<string, unknown> = { action_id: committed.id };
+        if (committed.command === 'challenge') response = { ...response, critique: JSON.parse(committed.action_json || '{}') };
+        else if (committed.command === 'reject') response = { ...response, visibility: 'rejected' };
+        else if (committed.command === 'pin') response = { ...response, pinned: true };
+        else if (committed.command === 'research_more') response = { ...response, claim_id: (JSON.parse(committed.action_json || '{}') as { claim_id: string }).claim_id, verification_status: 'unverified' };
+        else if (committed.result_version_id) {
+          const child = await env.DB.prepare('SELECT card_json FROM idea_versions WHERE id = ? AND session_id = ?')
+            .bind(committed.result_version_id, idea.session_id).first<{ card_json: string }>();
+          const edges = await env.DB.prepare('SELECT parent_version_id FROM idea_edges WHERE child_version_id = ? ORDER BY rowid')
+            .bind(committed.result_version_id).all<{ parent_version_id: string }>();
+          if (!child) throw new ApiFailure(409, 'action_reconciliation_required', 'Committed action is missing its idea version.');
+          response = { ...response, idea_version_id: committed.result_version_id, parent_version_ids: edges.results.map((edge) => edge.parent_version_id), card: JSON.parse(child.card_json) };
+        }
+        await env.DB.prepare('UPDATE action_idempotency_keys SET response_json = ? WHERE owner_key = ? AND route_key = ? AND client_key = ? AND action_id = ?')
+          .bind(JSON.stringify(response), owner.owner_key, routeKey, clientKey, prior.action_id).run();
+        return json(response);
+      }
+    } else throw new ApiFailure(409, 'action_reconciliation_required', 'A legacy incomplete action requires review.');
+    const replacementId = crypto.randomUUID();
+    const reclaimed = await env.DB.prepare(`UPDATE action_idempotency_keys SET action_id = ?,lease_expires_at = datetime('now','+2 minutes')
+      WHERE owner_key = ? AND route_key = ? AND client_key = ? AND response_json IS NULL
+        AND action_id = ? AND datetime(lease_expires_at) <= datetime('now') RETURNING action_id`)
+      .bind(replacementId, owner.owner_key, routeKey, clientKey, prior.action_id).first<{ action_id: string }>();
+    if (!reclaimed) throw new ApiFailure(409, 'action_in_progress', 'The original action is still being processed.', true);
+    return executeIdeaAction(replacementId);
   }
+  const actionId = crypto.randomUUID();
   await env.DB.prepare(
-    'INSERT INTO action_idempotency_keys (owner_key,route_key,client_key,request_hash) VALUES (?,?,?,?)',
-  ).bind(owner.owner_key, routeKey, clientKey, requestHash).run();
+    `INSERT INTO action_idempotency_keys (owner_key,route_key,client_key,request_hash,action_id,lease_expires_at)
+     VALUES (?,?,?,?,?,datetime('now','+2 minutes'))`,
+  ).bind(owner.owner_key, routeKey, clientKey, requestHash, actionId).run();
+  return executeIdeaAction(actionId);
+  async function executeIdeaAction(actionId: string): Promise<Response> {
   const finish = async (data: unknown): Promise<Response> => {
     await env.DB.prepare(
-      'UPDATE action_idempotency_keys SET response_json = ? WHERE owner_key = ? AND route_key = ? AND client_key = ?',
-    ).bind(JSON.stringify(data), owner.owner_key, routeKey, clientKey).run();
+      'UPDATE action_idempotency_keys SET response_json = ?,lease_expires_at = NULL WHERE owner_key = ? AND route_key = ? AND client_key = ? AND action_id = ?',
+    ).bind(JSON.stringify(data), owner.owner_key, routeKey, clientKey, actionId).run();
     return json(data);
   };
-  const actionId = crypto.randomUUID();
   if (body.command === 'challenge') {
     const card = JSON.parse(idea.card_json) as IdeaCardV1;
     const critique = critiqueIdea(card);
@@ -516,6 +489,7 @@ async function handleIdeaAction(request: Request, env: Env, owner: Owner, ideaId
   await env.DB.batch(statements);
   await recordSessionStage(env.DB, idea.session_id, 'evolve', 'completed', { action_id: actionId, idea_version_id: childId, parent_version_ids: parents });
   return finish({ action_id: actionId, idea_version_id: childId, parent_version_ids: parents, card: nextCard });
+  }
 }
 
 export async function handleApiRequest(request: Request, env: Env): Promise<Response> {

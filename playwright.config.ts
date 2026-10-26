@@ -21,7 +21,7 @@ export default defineConfig({
   webServer: {
     command: 'pnpm --filter @hacktor/web build && pnpm --filter @hacktor/web exec wrangler d1 migrations apply DB --local && pnpm --filter @hacktor/web exec wrangler dev --port 8787 --local',
     url: 'http://127.0.0.1:8787/api/v1/health',
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: !process.env.CI && !process.env.HACKTOR_FRESH_SERVER,
     timeout: 120_000,
   },
 });

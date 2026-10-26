@@ -91,12 +91,22 @@ export class JsonInferenceProvider implements InferenceProvider {
         throw new Error('Inference provider returned an invalid JSON envelope');
       }
       const envelope = body as { output: TOutput; usage?: Record<string, number> };
+      const usage = envelope.usage;
+      const inputTokens = usage?.input_tokens;
+      const outputTokens = usage?.output_tokens;
+      if (!Number.isSafeInteger(inputTokens) || !Number.isSafeInteger(outputTokens)
+        || inputTokens === undefined || outputTokens === undefined || inputTokens < 0 || outputTokens < 0) {
+        throw new Error('Inference provider returned invalid token usage');
+      }
+      if (outputTokens > request.budget.max_output_tokens) {
+        throw new Error('Inference provider exceeded the stage output budget');
+      }
       return {
         output: normalizeGeneratedValue(envelope.output),
         provider: 'json_inference_provider',
         model_id: this.options.modelId,
         prompt_version: this.options.promptVersion,
-        usage: envelope.usage ?? {},
+        usage: { input_tokens: inputTokens, output_tokens: outputTokens },
       };
     } finally {
       clearTimeout(timer);

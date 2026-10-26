@@ -4,6 +4,25 @@
 
 CONDITIONAL GO for review. Do not merge to `main` and do not begin M2.
 
+## Review remediation, 2026-10-26
+
+The review findings at `d388002a329b4f15b4e952889e7dd68dd5e65b04` were addressed on the feature branch. The deterministic generator is explicitly a test adapter and derives its problems, mechanisms, beneficiaries, demo paths, and constraints from a challenge profile. Regression coverage uses unrelated climate, clinical care, and rural education briefs and compares problem, mechanism, and beneficiary sets across the slates. These are deterministic examples for local development, not live AI output or verified research.
+
+The AI consumer now selects deterministic or live mode explicitly. The live mode calls the JSON inference provider, validates the nine-card result before persistence, tracks stage usage, reserves estimated per-stage token and dollar budgets, and blocks execution without a credential, model, and approved spending limits. A mocked HTTP endpoint exercised the live integration without a paid credential. Staging and production inference remain disabled in Wrangler configuration.
+
+Jobs now use an atomic claim with a lease token, checkpoint stages in transactional D1 batches, and recover expired leases. A duplicate delivery cannot claim a completed job. Incomplete idea-action idempotency rows now retain an action ID for response reconstruction; expired uncommitted rows can be reclaimed. Legacy incomplete rows require review.
+
+| Remediation check | Local result |
+| --- | --- |
+| `pnpm verify` | PASS, exit code 0. Formatting, lint, strict TypeScript, 19 tests in 7 files, 4 forward migrations, contract drift, secret scan, builds, and no U+2014 check passed. |
+| Challenge briefs | PASS, three unrelated brief regressions; each slate has nine distinct problems and mechanisms and at least three beneficiaries. |
+| Queue recovery | PASS, tests cover competing claims, expired lease reclaim, duplicate delivery, and interruption before transactional card persistence. |
+| Mock live provider | PASS, three recorded JSON provider stage runs and three usage reservations; no paid provider call. |
+| Missing live authorization | PASS, job enters `blocked_quota` with zero persisted ideas. |
+| Fresh local browser journeys | PASS, 4 Playwright tests across desktop, 390px mobile, 320px mobile, and 768px tablet using a newly built Worker and migrated local D1. The first run reused an old server and failed; the fresh-server rerun passed. |
+
+The current integration tests do not prove behavior against remote Cloudflare D1 or a paid model. A live invocation interrupted after its budget reservation is deliberately stopped for manual review because its external outcome cannot be inferred safely. The action lease path still needs a stronger transactional fence against a slow writer that resumes after its lease expires. These are remaining reliability blockers for an unconditional GO.
+
 The local M1 implementation is functional and reproducible. Live inference and automated research remain blocked because no approved model credential, spend budget, or source authorization was supplied. This is represented honestly in the product and stage records.
 
 ## Scope and isolation

@@ -25,81 +25,164 @@ export const initialStrategyLibrary: readonly IdeaStrategy[] = [
   'institutional_bottleneck',
 ];
 
+interface ChallengeProfile {
+  domain: string;
+  subject: string;
+  default_beneficiaries: string[];
+  workflow: string;
+  signal: string;
+  scarce_resource: string;
+  proof: string;
+}
+
+const challengeProfiles: Array<{ keywords: RegExp; profile: ChallengeProfile }> = [
+  {
+    keywords: /climate|flood|weather|resilien|disaster|carbon|energy/i,
+    profile: {
+      domain: 'climate resilience',
+      subject: 'local hazard preparation and response',
+      default_beneficiaries: ['neighborhood coordinators', 'residents in exposed areas', 'field volunteers'],
+      workflow: 'preparedness check and neighborhood response handoff',
+      signal: 'a local risk report or missed readiness task',
+      scarce_resource: 'connectivity, response time, and trusted local knowledge',
+      proof: 'turn one neighborhood risk report into a verified offline response plan',
+    },
+  },
+  {
+    keywords: /health|clinic|patient|medical|nurse|caregiver|hospital/i,
+    profile: {
+      domain: 'community health',
+      subject: 'continuity of care outside a clinical visit',
+      default_beneficiaries: ['patients managing care at home', 'community health workers', 'clinic coordinators'],
+      workflow: 'care instruction, follow-up, and escalation handoff',
+      signal: 'a missed follow-up or ambiguous symptom report',
+      scarce_resource: 'clinical attention, patient trust, and reliable follow-up',
+      proof: 'route one patient follow-up to the right safe next step without diagnosing',
+    },
+  },
+  {
+    keywords: /school|student|teacher|learn|education|classroom|literacy/i,
+    profile: {
+      domain: 'learning access',
+      subject: 'progress between instruction and demonstrated understanding',
+      default_beneficiaries: ['students with uneven access', 'classroom teachers', 'family learning supporters'],
+      workflow: 'assignment, practice, feedback, and support handoff',
+      signal: 'a repeated misconception or missing practice checkpoint',
+      scarce_resource: 'teacher attention, device access, and practice time',
+      proof: 'convert one misconception into a targeted practice and feedback loop',
+    },
+  },
+  {
+    keywords: /farm|agri|crop|farmer|food|harvest|soil/i,
+    profile: {
+      domain: 'smallholder agriculture',
+      subject: 'time-sensitive farm decisions under uncertain local conditions',
+      default_beneficiaries: ['smallholder farmers', 'local extension workers', 'produce aggregators'],
+      workflow: 'field observation, advice, action, and market handoff',
+      signal: 'a crop condition, input shortage, or price change',
+      scarce_resource: 'timely advice, affordable inputs, and market access',
+      proof: 'turn one field observation into an explainable low-cost action',
+    },
+  },
+  {
+    keywords: /finance|payment|merchant|bank|credit|invoice|money/i,
+    profile: {
+      domain: 'financial access',
+      subject: 'cash-flow decisions for people underserved by formal systems',
+      default_beneficiaries: ['informal merchants', 'first-time borrowers', 'community finance facilitators'],
+      workflow: 'transaction evidence, decision, and repayment handoff',
+      signal: 'a cash-flow gap or disputed transaction',
+      scarce_resource: 'trustworthy records, working capital, and decision time',
+      proof: 'explain one cash-flow decision from consented transaction evidence',
+    },
+  },
+];
+
+const genericProfile: ChallengeProfile = {
+  domain: 'the submitted challenge',
+  subject: 'the outcome described by the builder',
+  default_beneficiaries: ['the primary participant', 'frontline coordinators', 'downstream stakeholders'],
+  workflow: 'input, decision, action, and follow-up handoff',
+  signal: 'an observable stalled step',
+  scarce_resource: 'time, access, and trusted information',
+  proof: 'complete one end-to-end participant outcome',
+};
+
 const strategyDesign: Record<
   IdeaStrategy,
-  { name: string; actor: string; problem: string; mechanism: string; insight: string; demo: string }
+  { name: string; problem: (profile: ChallengeProfile) => string; mechanism: (profile: ChallengeProfile, requirement: string) => string; insight: string; demo: (profile: ChallengeProfile) => string; actor_offset: number }
 > = {
   neglected_actor: {
     name: 'Backstage Signal',
-    actor: 'the coordinators and support workers usually left out of the main workflow',
-    problem: 'Critical handoffs are invisible until a participant is already blocked.',
-    mechanism: 'A lightweight handoff ledger turns support observations into ranked, actionable interventions.',
+    actor_offset: 1,
+    problem: (profile) => `In ${profile.subject}, frontline observations are invisible until the primary participant is already blocked.`,
+    mechanism: (profile, requirement) => `A handoff ledger turns ${profile.signal} into ranked interventions for ${profile.workflow}, while respecting ${requirement}.`,
     insight: 'People maintaining the system often see failure sooner than its intended beneficiaries.',
-    demo: 'A coordinator records one weak signal and the workspace surfaces the next preventive action.',
+    demo: (profile) => `A coordinator records ${profile.signal} and the product surfaces the next preventive action.`,
   },
   constraint_inversion: {
     name: 'Constraint Dividend',
-    actor: 'teams working under the strictest time, access, or connectivity constraints',
-    problem: 'Existing tools treat hard limits as degraded conditions instead of useful design inputs.',
-    mechanism: 'A constraint compiler converts each hard limit into a product rule and testable advantage.',
+    actor_offset: 0,
+    problem: (profile) => `${profile.domain} tools treat ${profile.scarce_resource} as degraded conditions instead of design inputs.`,
+    mechanism: (_profile, requirement) => `A constraint compiler converts ${requirement} into product rules, offline fallbacks, and acceptance tests.`,
     insight: 'The limitation shared by many entrants can become the feature judges remember most clearly.',
-    demo: 'Toggle a hard constraint and watch the product plan simplify while its core value remains intact.',
+    demo: (profile) => `Toggle the hardest constraint and still ${profile.proof}.`,
   },
   cross_domain_transfer: {
     name: 'Borrowed Protocol',
-    actor: 'builders who need a proven coordination pattern without copying an existing product',
-    problem: 'Teams repeatedly invent weak coordination flows that mature fields already know how to manage.',
-    mechanism: 'A protocol mapper transfers incident command practices into a compact collaborative workflow.',
+    actor_offset: 1,
+    problem: (profile) => `${profile.workflow} lacks the explicit roles and escalation rules used in safety-critical operations.`,
+    mechanism: (profile, requirement) => `Transfer incident-command checkpoints into ${profile.workflow}, implemented within ${requirement}.`,
     insight: 'A mechanism proven in a distant domain can unlock progress without importing that domain product.',
-    demo: 'The same messy task is reorganized into roles, checkpoints, and an auditable resolution path.',
+    demo: (profile) => `Reorganize ${profile.signal} into roles, checkpoints, and an auditable resolution path.`,
   },
   negative_space: {
     name: 'Missing Step',
-    actor: 'people who abandon the journey between discovery and a first successful outcome',
-    problem: 'The market optimizes visible tasks while leaving the transition between them unsupported.',
-    mechanism: 'A transition detector identifies stalled journeys and offers one context-specific bridge action.',
+    actor_offset: 0,
+    problem: (profile) => `${profile.domain} products optimize visible tasks but leave one transition in ${profile.workflow} unsupported.`,
+    mechanism: (profile, requirement) => `A transition detector finds stalled ${profile.workflow} journeys and offers one bridge action compatible with ${requirement}.`,
     insight: 'The most valuable product surface may be the moment every current solution assumes is complete.',
-    demo: 'A stalled journey is detected and one missing step appears with a clear completion signal.',
+    demo: (profile) => `Detect a stalled ${profile.workflow} and reveal its missing step with a completion signal.`,
   },
   second_order: {
     name: 'Ripple Ledger',
-    actor: 'people affected after the immediate user completes the primary action',
-    problem: 'First-order success can shift delay, cost, or risk onto an unseen downstream participant.',
-    mechanism: 'An impact graph previews downstream effects and lets teams choose a lower-cost intervention.',
+    actor_offset: 2,
+    problem: (profile) => `A successful ${profile.workflow} decision can shift delay, cost, or risk onto an unseen downstream participant.`,
+    mechanism: (profile, requirement) => `An impact graph previews who absorbs the consequences of ${profile.signal} and selects an intervention under ${requirement}.`,
     insight: 'Optimizing the visible outcome alone can create a larger problem one step later.',
-    demo: 'Choose an intervention and see its downstream load move before committing to the action.',
+    demo: (profile) => `Choose an intervention in ${profile.domain} and see downstream load move before committing.`,
   },
   failure_first: {
     name: 'Preflight Failure Lab',
-    actor: 'small teams that cannot afford to discover fatal assumptions during the final demo',
-    problem: 'Teams polish the happy path before testing the single failure that could invalidate the concept.',
-    mechanism: 'A failure simulator converts the riskiest assumption into a short adversarial rehearsal.',
+    actor_offset: 1,
+    problem: (profile) => `${profile.domain} teams polish the happy path before testing the failure that could invalidate ${profile.proof}.`,
+    mechanism: (profile, requirement) => `A failure simulator turns the riskiest assumption in ${profile.workflow} into a rehearsal constrained by ${requirement}.`,
     insight: 'A credible failure response can be a stronger differentiator than another polished feature.',
-    demo: 'Trigger the top failure mode and show the product degrade safely with a recovery recommendation.',
+    demo: (profile) => `Trigger failure around ${profile.signal} and show safe degradation plus recovery.`,
   },
   counterfactual: {
     name: 'No Default',
-    actor: 'people excluded by the resource or institution that current solutions assume will always exist',
-    problem: 'Most approaches collapse when their default intermediary, dataset, or trusted authority disappears.',
-    mechanism: 'A counterfactual planner removes one assumed dependency and builds a peer-verifiable alternative.',
+    actor_offset: 0,
+    problem: (profile) => `${profile.domain} approaches collapse when one assumed intermediary or trusted dataset disappears.`,
+    mechanism: (profile, requirement) => `A counterfactual planner removes that dependency from ${profile.workflow} and builds a peer-verifiable path under ${requirement}.`,
     insight: 'Removing the default can expose a simpler and more resilient route to the same outcome.',
-    demo: 'Disable the assumed dependency and complete the core journey through the alternative path.',
+    demo: (profile) => `Disable the assumed dependency and still ${profile.proof}.`,
   },
   low_resource: {
     name: 'Pocket Infrastructure',
-    actor: 'participants with intermittent connectivity, older devices, and limited time or money',
-    problem: 'Cloud-heavy experiences make the people with the highest need wait or drop out entirely.',
-    mechanism: 'An offline-first task packet syncs minimal proofs and decisions only when connectivity returns.',
+    actor_offset: 0,
+    problem: (profile) => `Cloud-heavy ${profile.domain} experiences exclude people facing scarcity in ${profile.scarce_resource}.`,
+    mechanism: (profile, requirement) => `A compact task packet supports ${profile.workflow} locally and syncs only minimum proofs, honoring ${requirement}.`,
     insight: 'Resource scarcity can focus the product on the smallest exchange that creates real value.',
-    demo: 'Complete the central task offline, reconnect, and watch a compact verified update synchronize.',
+    demo: (profile) => `Complete ${profile.proof} with the constrained path, then synchronize a minimal update.`,
   },
   institutional_bottleneck: {
     name: 'Approval Trace',
-    actor: 'applicants and frontline staff trapped inside opaque multi-party approval processes',
-    problem: 'Work stalls because nobody can see which decision, evidence item, or owner is blocking progress.',
-    mechanism: 'A privacy-aware decision trace exposes the next accountable checkpoint without leaking case data.',
+    actor_offset: 2,
+    problem: (profile) => `${profile.workflow} stalls because nobody can see which decision, evidence item, or owner blocks progress.`,
+    mechanism: (profile, requirement) => `A privacy-aware decision trace exposes the next accountable checkpoint in ${profile.domain} without violating ${requirement}.`,
     insight: 'The bottleneck is often coordination between institutions, not lack of another user-facing form.',
-    demo: 'Open a stalled case and reveal the exact checkpoint, accountable role, and safe next action.',
+    demo: (profile) => `Open a stalled ${profile.workflow} case and reveal its accountable role and safe next action.`,
   },
 };
 
@@ -107,33 +190,52 @@ function clean(value: string): string {
   return value.replaceAll(String.fromCodePoint(0x2014), '-').trim();
 }
 
-export function generateDeterministicSlate(context: SessionContext): IdeaCardV1[] {
-  const topic = clean(context.summary || 'the submitted challenge');
+function clip(value: string, maximum: number): string {
+  return clean(value).slice(0, maximum).trim();
+}
+
+function selectChallengeProfile(context: SessionContext): ChallengeProfile {
+  const corpus = [context.summary, ...context.goals, ...context.hard_constraints.map((item) => item.text)].join(' ');
+  return challengeProfiles.find((entry) => entry.keywords.test(corpus))?.profile ?? genericProfile;
+}
+
+export function generateDeterministicTestSlate(context: SessionContext): IdeaCardV1[] {
+  const profile = selectChallengeProfile(context);
+  const topic = clip(context.summary || profile.subject, 150);
+  const beneficiaries = Array.from(new Set([...context.beneficiaries, ...profile.default_beneficiaries]));
+  const requirements = context.hard_constraints.map((constraint) => constraint.text);
+  const requirement = clip(requirements.join('; ') || `the stated ${profile.scarce_resource} limits`, 240);
   const hardConstraintIds = context.hard_constraints.map((constraint) => constraint.id);
   return initialStrategyLibrary.map((strategy) => {
     const design = strategyDesign[strategy];
+    const targetUser = beneficiaries[design.actor_offset % beneficiaries.length] ?? profile.default_beneficiaries[0]!;
+    const problem = clip(design.problem(profile), 600);
+    const mechanism = clip(design.mechanism(profile, requirement), 850);
     return {
       schema_version: '1.0',
-      name: design.name,
-      one_liner: `${design.mechanism} Applied to ${topic.slice(0, 90)}.`,
-      target_user: design.actor,
-      problem: design.problem,
+      name: clip(`${design.name}: ${profile.domain}`, 80),
+      one_liner: clip(`${mechanism} Challenge focus: ${topic}`, 240),
+      target_user: clip(targetUser, 180),
+      problem,
       underexplored_insight: design.insight,
-      mechanism: design.mechanism,
-      demo_moment: design.demo,
+      mechanism,
+      demo_moment: clip(design.demo(profile), 500),
       strategy,
-      major_failure_mode: 'The core assumption may not hold for the selected participant group and must be tested directly.',
+      major_failure_mode: clip(`The assumption that ${targetUser} can act on ${profile.signal} under ${requirement} may not hold and must be tested directly.`, 500),
       evidence_status: 'user_provided',
       build_difficulty: strategy === 'cross_domain_transfer' || strategy === 'second_order' ? 'high' : 'medium',
-      novelty_hypothesis: `This direction may be differentiated because it applies ${strategy.replaceAll('_', ' ')} to the supplied context. This is a hypothesis, not a measured originality claim.`,
+      novelty_hypothesis: clip(`This direction may be differentiated because it applies ${strategy.replaceAll('_', ' ')} to ${profile.subject} for ${targetUser}. This is a hypothesis, not a measured originality claim.`, 500),
       hard_constraint_ids: hardConstraintIds,
       hackathon_fit: 'Designed for a narrow end-to-end demonstration with an observable before and after state.',
-      dependencies: ['Validated participant interview', 'Representative workflow sample'],
+      dependencies: [`Validated interview with ${targetUser}`, `Representative sample of ${profile.workflow}`],
       source_ids: [],
-      unknowns: [...context.unknowns, 'Whether the target participant values this intervention enough to change behavior'].slice(0, 10),
+      unknowns: [...context.unknowns, `Whether ${targetUser} values this intervention enough to change behavior`].slice(0, 10),
     };
   });
 }
+
+/** Test-only compatibility alias. Production selection must use an explicit provider mode. */
+export const generateDeterministicSlate = generateDeterministicTestSlate;
 
 export function critiqueIdea(card: IdeaCardV1): Record<string, string[]> {
   return {

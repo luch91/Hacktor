@@ -29,7 +29,8 @@
   },
   "vars": {
     "HACKTOR_ENV": "local",
-    "AI_PROCESSING_ENABLED": "true"
+    "AI_PROCESSING_ENABLED": "true",
+    "INFERENCE_MODE": "deterministic"
   },
   "observability": {
     "enabled": true,
@@ -60,7 +61,7 @@
           }
         ]
       },
-      "vars": { "HACKTOR_ENV": "staging", "AI_PROCESSING_ENABLED": "false" }
+      "vars": { "HACKTOR_ENV": "staging", "AI_PROCESSING_ENABLED": "false", "INFERENCE_MODE": "disabled" }
     },
     "production": {
       "name": "hacktor-ai-consumer-production",
@@ -85,7 +86,7 @@
           }
         ]
       },
-      "vars": { "HACKTOR_ENV": "production", "AI_PROCESSING_ENABLED": "false" }
+      "vars": { "HACKTOR_ENV": "production", "AI_PROCESSING_ENABLED": "false", "INFERENCE_MODE": "disabled" }
     }
   }
 }
