@@ -33,6 +33,17 @@ class ProcessingFailure extends Error {
   }
 }
 
+function assertPreviousGuard(db: D1Database): D1PreparedStatement {
+  return db.prepare('UPDATE persistence_fence SET valid = CASE WHEN changes() = 1 THEN 1 ELSE 0 END WHERE id = 1');
+}
+
+function guardJobLease(db: D1Database, job: JobRow): D1PreparedStatement {
+  return db.prepare(
+    `UPDATE jobs SET updated_at = datetime('now') WHERE id = ? AND lease_token = ?
+      AND status = 'running' AND datetime(lease_expires_at) > datetime('now')`,
+  ).bind(job.id, job.lease_token);
+}
+
 function parseJobRequest(value: string): { idea_version_id?: string } {
   const parsed: unknown = JSON.parse(value);
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new ProcessingFailure('Job request is invalid.', false);
@@ -158,10 +169,13 @@ async function reserveStageBudget(db: D1Database, job: JobRow, selection: Provid
   if (used.tokens + maximumTokens > selection.max_job_tokens || used.cost + maximumCost > selection.max_job_cost_usd) {
     throw new ProcessingFailure('The remaining job token or spending budget is insufficient.', false, true);
   }
-  await db.prepare(
-    `INSERT INTO usage_ledger (id,owner_key,provider_invocation_id,job_id,usage_units,estimated_cost_usd,kind)
-     VALUES (?,?,?,?,?,?,'reserve')`,
-  ).bind(crypto.randomUUID(), job.owner_key, `${job.id}:${stage}:reserve`, job.id, maximumTokens, maximumCost).run();
+  await db.batch([
+    guardJobLease(db, job), assertPreviousGuard(db),
+    db.prepare(
+      `INSERT INTO usage_ledger (id,owner_key,provider_invocation_id,job_id,usage_units,estimated_cost_usd,kind)
+       VALUES (?,?,?,?,?,?,'reserve')`,
+    ).bind(crypto.randomUUID(), job.owner_key, `${job.id}:${stage}:reserve`, job.id, maximumTokens, maximumCost),
+  ]);
 }
 
 async function persistStage(
@@ -223,8 +237,10 @@ async function persistStage(
   ).bind(job.session_id, stage, JSON.stringify({ job_id: job.id, artifact_ids: artifactIds })));
   statements.push(db.prepare(
     `UPDATE jobs SET stage = ?,progress_json = ?,updated_at = datetime('now')
-     WHERE id = ? AND lease_token = ? AND status = 'running'`,
+     WHERE id = ? AND lease_token = ? AND status = 'running'
+       AND datetime(lease_expires_at) > datetime('now')`,
   ).bind(stage, JSON.stringify({ stage_index: ideationStages.indexOf(stage) + 1, stage_count: 8 }), job.id, job.lease_token));
+  statements.push(assertPreviousGuard(db));
   await db.batch(statements);
   return artifactIds;
 }
@@ -236,7 +252,7 @@ async function persistLocalArtifact(db: D1Database, job: JobRow, request: { idea
     .bind(ideaId, job.session_id).first<{ card_json: string }>();
   if (!idea) throw new ProcessingFailure('The selected idea version is unavailable.', false);
   if (job.job_type === 'validation') {
-    await db.batch([db.prepare(
+    await db.batch([guardJobLease(db, job), assertPreviousGuard(db), db.prepare(
       `INSERT OR IGNORE INTO scorecards
        (id,idea_version_id,rubric_version,coverage_status,observed_overlap,sample_count,score_json,evidence_json)
        VALUES (?,?,?,'partial','insufficient_evidence',0,?,?)`,
@@ -249,7 +265,7 @@ async function persistLocalArtifact(db: D1Database, job: JobRow, request: { idea
     return [job.id];
   }
   if (job.job_type === 'blueprint') {
-    await db.batch([db.prepare(
+    await db.batch([guardJobLease(db, job), assertPreviousGuard(db), db.prepare(
       `INSERT OR IGNORE INTO blueprints
        (id,idea_version_id,source_manifest_json,content_markdown,review_required) VALUES (?,?,?,?,1)`,
     ).bind(job.id, ideaId, '[]', buildBlueprint(JSON.parse(idea.card_json) as IdeaCardV1, ideaId)),
@@ -266,10 +282,10 @@ async function persistLocalArtifact(db: D1Database, job: JobRow, request: { idea
 async function markBlockedStages(db: D1Database, job: JobRow): Promise<void> {
   if (job.job_type !== 'diverse_slate' && job.job_type !== 'opportunity_map') return;
   const stages = job.job_type === 'opportunity_map' ? ideationStages.slice(2) : ideationStages.slice(3);
-  await db.batch(stages.map((stage) => db.prepare(
+  await db.batch([guardJobLease(db, job), assertPreviousGuard(db), ...stages.map((stage) => db.prepare(
     `INSERT INTO session_stage_runs (session_id,stage,status,artifact_json)
      VALUES (?,?,'blocked',?) ON CONFLICT(session_id,stage) DO NOTHING`,
-  ).bind(job.session_id, stage, JSON.stringify({ reason: 'Requires a builder action, selected idea, or authorized evidence.' }))));
+  ).bind(job.session_id, stage, JSON.stringify({ reason: 'Requires a builder action, selected idea, or authorized evidence.' })))]);
 }
 
 export async function markJobFailure(db: D1Database, job: JobRow, error: unknown): Promise<ProcessingResult> {
@@ -279,7 +295,8 @@ export async function markJobFailure(db: D1Database, job: JobRow, error: unknown
   const message = error instanceof Error ? error.message : 'Processing failed.';
   const updated = await db.prepare(
     `UPDATE jobs SET status = ?,error_json = ?,lease_token = NULL,lease_expires_at = NULL,
-       updated_at = datetime('now') WHERE id = ? AND lease_token = ? AND status = 'running' RETURNING id`,
+       updated_at = datetime('now') WHERE id = ? AND lease_token = ? AND status = 'running'
+         AND datetime(lease_expires_at) > datetime('now') RETURNING id`,
   ).bind(status, JSON.stringify({ code: quota ? 'budget_exceeded' : 'processing_failed', message, retryable: status === 'retry_wait' }), job.id, job.lease_token).first<{ id: string }>();
   return { job_id: job.id, status: updated ? status : 'duplicate' };
 }
@@ -327,7 +344,8 @@ export async function processStudioJob(
     const completed = await db.prepare(
       `UPDATE jobs SET status = 'completed',stage = ?,result_json = ?,lease_token = NULL,
          lease_expires_at = NULL,updated_at = datetime('now')
-       WHERE id = ? AND lease_token = ? AND status = 'running' RETURNING id`,
+       WHERE id = ? AND lease_token = ? AND status = 'running'
+         AND datetime(lease_expires_at) > datetime('now') RETURNING id`,
     ).bind(lastStage, JSON.stringify({ artifact_ids: artifactIds, inference_mode: selection.mode }), job.id, job.lease_token).first<{ id: string }>();
     return completed ? { job_id: job.id, status: 'completed', artifact_ids: artifactIds } : { job_id: job.id, status: 'duplicate' };
   } catch (error) {

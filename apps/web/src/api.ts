@@ -248,11 +248,11 @@ function jobRouteKey(sessionId: string, jobType: string): string {
   return `sessions/${sessionId}/jobs/${jobType}`;
 }
 
-async function recordSessionStage(db: D1Database, sessionId: string, stage: string, status: string, artifact: unknown): Promise<void> {
-  await db.prepare(
+function prepareSessionStage(db: D1Database, sessionId: string, stage: string, status: string, artifact: unknown): D1PreparedStatement {
+  return db.prepare(
     `INSERT INTO session_stage_runs (session_id,stage,status,artifact_json,updated_at) VALUES (?,?,?,?,datetime('now'))
      ON CONFLICT(session_id,stage) DO UPDATE SET status = excluded.status,artifact_json = excluded.artifact_json,updated_at = datetime('now')`,
-  ).bind(sessionId, stage, status, JSON.stringify(artifact)).run();
+  ).bind(sessionId, stage, status, JSON.stringify(artifact));
 }
 
 
@@ -373,11 +373,18 @@ async function handleIdeaAction(request: Request, env: Env, owner: Owner, ideaId
   if (!clientKey || clientKey.length < 8 || clientKey.length > 128) throw new ApiFailure(422, 'idempotency_key_required', 'A valid Idempotency-Key header is required.');
   const routeKey = `ideas/${idea.id}/actions/${body.command}`;
   const requestHash = await sha256(JSON.stringify(body));
+  const actionId = crypto.randomUUID();
+  await env.DB.prepare(
+    `INSERT OR IGNORE INTO action_idempotency_keys
+     (owner_key,route_key,client_key,request_hash,action_id,lease_expires_at)
+     VALUES (?,?,?,?,?,datetime('now','+2 minutes'))`,
+  ).bind(owner.owner_key, routeKey, clientKey, requestHash, actionId).run();
   const prior = await env.DB.prepare(
     'SELECT request_hash,response_json,action_id,lease_expires_at FROM action_idempotency_keys WHERE owner_key = ? AND route_key = ? AND client_key = ?',
   ).bind(owner.owner_key, routeKey, clientKey).first<{ request_hash: string; response_json: string | null; action_id: string | null; lease_expires_at: string | null }>();
   if (prior) {
     if (!(await safeEqual(prior.request_hash, requestHash))) throw new ApiFailure(409, 'idempotency_conflict', 'The idempotency key was already used with a different request.');
+    if (prior.action_id === actionId) return executeIdeaAction(actionId);
     if (prior.response_json) return json(JSON.parse(prior.response_json));
     if (prior.action_id) {
       const committed = await env.DB.prepare('SELECT id,command,action_json,result_version_id FROM idea_actions WHERE id = ? AND session_id = ?')
@@ -396,8 +403,9 @@ async function handleIdeaAction(request: Request, env: Env, owner: Owner, ideaId
           if (!child) throw new ApiFailure(409, 'action_reconciliation_required', 'Committed action is missing its idea version.');
           response = { ...response, idea_version_id: committed.result_version_id, parent_version_ids: edges.results.map((edge) => edge.parent_version_id), card: JSON.parse(child.card_json) };
         }
-        await env.DB.prepare('UPDATE action_idempotency_keys SET response_json = ? WHERE owner_key = ? AND route_key = ? AND client_key = ? AND action_id = ?')
+        const repaired = await env.DB.prepare('UPDATE action_idempotency_keys SET response_json = ? WHERE owner_key = ? AND route_key = ? AND client_key = ? AND action_id = ? AND response_json IS NULL')
           .bind(JSON.stringify(response), owner.owner_key, routeKey, clientKey, prior.action_id).run();
+        if (repaired.meta.changes !== 1) throw new ApiFailure(409, 'action_reconciliation_conflict', 'The action changed during response repair.', true);
         return json(response);
       }
     } else throw new ApiFailure(409, 'action_reconciliation_required', 'A legacy incomplete action requires review.');
@@ -409,53 +417,63 @@ async function handleIdeaAction(request: Request, env: Env, owner: Owner, ideaId
     if (!reclaimed) throw new ApiFailure(409, 'action_in_progress', 'The original action is still being processed.', true);
     return executeIdeaAction(replacementId);
   }
-  const actionId = crypto.randomUUID();
-  await env.DB.prepare(
-    `INSERT INTO action_idempotency_keys (owner_key,route_key,client_key,request_hash,action_id,lease_expires_at)
-     VALUES (?,?,?,?,?,datetime('now','+2 minutes'))`,
-  ).bind(owner.owner_key, routeKey, clientKey, requestHash, actionId).run();
-  return executeIdeaAction(actionId);
+  throw new ApiFailure(500, 'action_reservation_missing', 'Action reservation could not be read.');
   async function executeIdeaAction(actionId: string): Promise<Response> {
-  const finish = async (data: unknown): Promise<Response> => {
-    await env.DB.prepare(
-      'UPDATE action_idempotency_keys SET response_json = ?,lease_expires_at = NULL WHERE owner_key = ? AND route_key = ? AND client_key = ? AND action_id = ?',
-    ).bind(JSON.stringify(data), owner.owner_key, routeKey, clientKey, actionId).run();
+  const commitAction = async (statements: D1PreparedStatement[], data: unknown): Promise<Response> => {
+    statements.push(env.DB.prepare(
+      `UPDATE action_idempotency_keys SET response_json = ?,lease_expires_at = NULL
+       WHERE owner_key = ? AND route_key = ? AND client_key = ? AND action_id = ?
+         AND response_json IS NULL AND datetime(lease_expires_at) > datetime('now')`,
+    ).bind(JSON.stringify(data), owner.owner_key, routeKey, clientKey, actionId));
+    statements.push(env.DB.prepare(
+      'UPDATE persistence_fence SET valid = CASE WHEN changes() = 1 THEN 1 ELSE 0 END WHERE id = 1',
+    ));
+    try {
+      await env.DB.batch(statements);
+    } catch (error) {
+      const current = await env.DB.prepare(
+        `SELECT action_id,response_json,
+          datetime(lease_expires_at) > datetime('now') AS lease_valid
+         FROM action_idempotency_keys WHERE owner_key = ? AND route_key = ? AND client_key = ?`,
+      ).bind(owner.owner_key, routeKey, clientKey).first<{ action_id: string; response_json: string | null; lease_valid: number }>();
+      if (current?.response_json) return json(JSON.parse(current.response_json));
+      if (current?.action_id !== actionId || !current.lease_valid) {
+        throw new ApiFailure(409, 'action_lease_lost', 'This action executor no longer owns a valid lease.', true);
+      }
+      throw error;
+    }
     return json(data);
   };
   if (body.command === 'challenge') {
     const card = JSON.parse(idea.card_json) as IdeaCardV1;
     const critique = critiqueIdea(card);
-    await env.DB.prepare(
+    return commitAction([env.DB.prepare(
       'INSERT INTO idea_actions (id,session_id,target_version_id,command,instruction,action_json) VALUES (?,?,?,?,?,?)',
-    ).bind(actionId, idea.session_id, idea.id, body.command, body.instruction || null, JSON.stringify(critique)).run();
-    await recordSessionStage(env.DB, idea.session_id, 'interrogate', 'completed', { action_id: actionId, idea_version_id: idea.id });
-    return finish({ action_id: actionId, critique });
+    ).bind(actionId, idea.session_id, idea.id, body.command, body.instruction || null, JSON.stringify(critique)),
+    prepareSessionStage(env.DB, idea.session_id, 'interrogate', 'completed', { action_id: actionId, idea_version_id: idea.id })], { action_id: actionId, critique });
   }
   if (body.command === 'reject') {
-    await env.DB.batch([
+    return commitAction([
       env.DB.prepare("UPDATE idea_versions SET visibility = 'rejected' WHERE id = ?").bind(idea.id),
       env.DB.prepare('INSERT OR REPLACE INTO idea_rejections (idea_version_id,reason,exclusion_pattern) VALUES (?,?,?)').bind(idea.id, body.reason || 'Builder rejected this direction.', body.instruction || null),
       env.DB.prepare('INSERT INTO idea_actions (id,session_id,target_version_id,command,instruction) VALUES (?,?,?,?,?)').bind(actionId, idea.session_id, idea.id, body.command, body.instruction || null),
-    ]);
-    return finish({ action_id: actionId, visibility: 'rejected' });
+    ], { action_id: actionId, visibility: 'rejected' });
   }
   if (body.command === 'pin') {
-    await env.DB.batch([
+    return commitAction([
       env.DB.prepare('INSERT OR IGNORE INTO idea_pins (session_id,idea_version_id) VALUES (?,?)').bind(idea.session_id, idea.id),
       env.DB.prepare('INSERT INTO idea_actions (id,session_id,target_version_id,command,instruction) VALUES (?,?,?,?,?)').bind(actionId, idea.session_id, idea.id, body.command, body.instruction || null),
-    ]);
-    return finish({ action_id: actionId, pinned: true });
+    ], { action_id: actionId, pinned: true });
   }
   if (body.command === 'research_more') {
     const claimId = crypto.randomUUID();
-    await env.DB.batch([
+    return commitAction([
       env.DB.prepare(
         "INSERT INTO research_claims (id,idea_version_id,claim,claim_type,verification_status) VALUES (?,?,?,'hypothesis','unverified')",
       ).bind(claimId, idea.id, body.instruction || 'Additional research is needed before this claim can be verified.'),
       env.DB.prepare('INSERT INTO idea_actions (id,session_id,target_version_id,command,instruction,action_json) VALUES (?,?,?,?,?,?)').bind(actionId, idea.session_id, idea.id, body.command, body.instruction || null, JSON.stringify({ claim_id: claimId })),
-    ]);
-    await recordSessionStage(env.DB, idea.session_id, 'research', 'blocked', { reason: 'Hypothesis recorded without an approved external source.', claim_id: claimId });
-    return finish({ action_id: actionId, claim_id: claimId, verification_status: 'unverified' });
+      prepareSessionStage(env.DB, idea.session_id, 'research', 'blocked', { reason: 'Hypothesis recorded without an approved external source.', claim_id: claimId }),
+    ], { action_id: actionId, claim_id: claimId, verification_status: 'unverified' });
   }
   const parentCard = JSON.parse(idea.card_json) as IdeaCardV1;
   let nextCard: IdeaCardV1;
@@ -486,9 +504,8 @@ async function handleIdeaAction(request: Request, env: Env, owner: Owner, ideaId
       'INSERT INTO idea_actions (id,session_id,target_version_id,command,instruction,result_version_id,action_json) VALUES (?,?,?,?,?,?,?)',
     ).bind(actionId, idea.session_id, idea.id, body.command, body.instruction || null, childId, JSON.stringify({ parent_version_ids: parents })),
   ];
-  await env.DB.batch(statements);
-  await recordSessionStage(env.DB, idea.session_id, 'evolve', 'completed', { action_id: actionId, idea_version_id: childId, parent_version_ids: parents });
-  return finish({ action_id: actionId, idea_version_id: childId, parent_version_ids: parents, card: nextCard });
+  statements.push(prepareSessionStage(env.DB, idea.session_id, 'evolve', 'completed', { action_id: actionId, idea_version_id: childId, parent_version_ids: parents }));
+  return commitAction(statements, { action_id: actionId, idea_version_id: childId, parent_version_ids: parents, card: nextCard });
   }
 }
 
@@ -572,7 +589,7 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
       return json({ ...job, progress: JSON.parse(String(job.progress_json)), result: job.result_json ? JSON.parse(String(job.result_json)) : null, error: job.error_json ? JSON.parse(String(job.error_json)) : null, progress_json: undefined, result_json: undefined, error_json: undefined });
     }
     const actionMatch = path.match(/^\/api\/v1\/ideas\/([^/]+)\/actions$/);
-    if (actionMatch?.[1] && request.method === 'POST') return handleIdeaAction(request, env, owner, actionMatch[1]);
+    if (actionMatch?.[1] && request.method === 'POST') return await handleIdeaAction(request, env, owner, actionMatch[1]);
     const evidenceMatch = path.match(/^\/api\/v1\/ideas\/([^/]+)\/evidence$/);
     if (evidenceMatch?.[1] && request.method === 'GET') {
       const idea = await ownedIdea(env.DB, owner, evidenceMatch[1]);

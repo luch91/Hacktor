@@ -108,4 +108,63 @@ describe('M1 durable queue processing', () => {
     expect(sqlite.prepare('SELECT count(*) AS n FROM idea_versions').get()).toMatchObject({ n: 0 });
     sqlite.close();
   });
+
+  it('rolls back cards and claims when the lease expires before the artifact batch', async () => {
+    const { sqlite, db, message } = testDb();
+    const original = db.batch.bind(db);
+    let expired = false;
+    db.batch = async (items) => {
+      if (!expired && items.length > 10) {
+        expired = true;
+        sqlite.prepare("UPDATE jobs SET lease_expires_at = datetime('now','-1 minute') WHERE id = 'job'").run();
+      }
+      return original(items);
+    };
+    expect((await processStudioJob(message, db, { INFERENCE_MODE: 'deterministic' })).status).toBe('duplicate');
+    expect(sqlite.prepare("SELECT count(*) AS n FROM idea_versions WHERE generation_job_id = 'job'").get()).toMatchObject({ n: 0 });
+    expect(sqlite.prepare('SELECT count(*) AS n FROM opportunity_hypotheses').get()).toMatchObject({ n: 0 });
+    expect(sqlite.prepare("SELECT count(*) AS n FROM generation_runs WHERE stage = 'diverge'").get()).toMatchObject({ n: 0 });
+    db.batch = original;
+    expect((await processStudioJob(message, db, { INFERENCE_MODE: 'deterministic' })).status).toBe('completed');
+    expect(sqlite.prepare("SELECT count(*) AS n FROM idea_versions WHERE generation_job_id = 'job'").get()).toMatchObject({ n: 9 });
+    expect(sqlite.prepare('SELECT count(*) AS n FROM opportunity_hypotheses').get()).toMatchObject({ n: 3 });
+    sqlite.close();
+  });
+
+  it('serializes competing consumers and duplicate Queue delivery', async () => {
+    const { sqlite, db, message } = testDb();
+    const results = await Promise.all([
+      processStudioJob(message, db, { INFERENCE_MODE: 'deterministic' }),
+      processStudioJob(message, db, { INFERENCE_MODE: 'deterministic' }),
+    ]);
+    expect(results.map((result) => result.status).sort()).toEqual(['completed', 'duplicate']);
+    expect((await processStudioJob(message, db, { INFERENCE_MODE: 'deterministic' })).status).toBe('duplicate');
+    expect(sqlite.prepare("SELECT count(*) AS n FROM idea_versions WHERE generation_job_id = 'job'").get()).toMatchObject({ n: 9 });
+    expect(sqlite.prepare('SELECT count(*) AS n FROM opportunity_hypotheses').get()).toMatchObject({ n: 3 });
+    sqlite.close();
+  });
+
+  it('fences blueprint persistence and recovers one artifact', async () => {
+    const { sqlite, db, message } = testDb();
+    const card = generateDeterministicTestSlate(context)[0]!;
+    sqlite.prepare("INSERT INTO idea_versions(id,session_id,strategy,card_json,schema_version) VALUES ('idea','session',?,?,'1.0')")
+      .run(card.strategy, JSON.stringify(card));
+    sqlite.prepare("UPDATE jobs SET job_type = 'blueprint',request_json = ? WHERE id = 'job'").run(JSON.stringify({ idea_version_id: 'idea' }));
+    const original = db.batch.bind(db);
+    let expired = false;
+    db.batch = async (items) => {
+      if (!expired && items.length === 4) {
+        expired = true;
+        sqlite.prepare("UPDATE jobs SET lease_expires_at = datetime('now','-1 minute') WHERE id = 'job'").run();
+      }
+      return original(items);
+    };
+    expect((await processStudioJob(message, db, { INFERENCE_MODE: 'deterministic' })).status).toBe('duplicate');
+    expect(sqlite.prepare('SELECT count(*) AS n FROM blueprints').get()).toMatchObject({ n: 0 });
+    db.batch = original;
+    expect((await processStudioJob(message, db, { INFERENCE_MODE: 'deterministic' })).status).toBe('completed');
+    expect((await processStudioJob(message, db, { INFERENCE_MODE: 'deterministic' })).status).toBe('duplicate');
+    expect(sqlite.prepare('SELECT count(*) AS n FROM blueprints').get()).toMatchObject({ n: 1 });
+    sqlite.close();
+  });
 });
