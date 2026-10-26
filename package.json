@@ -15,7 +15,7 @@
     "lint": "node scripts/check-format.mjs && pnpm typography:check",
     "typecheck": "tsc --build",
     "test": "vitest run",
-    "test:model-bakeoff": "node --test evaluation/model-bakeoff/runner.test.mjs",
+    "test:model-bakeoff": "node --test evaluation/model-bakeoff/*.test.mjs",
     "test:db": "python scripts/test-migration.py",
     "test:contracts": "vitest run tests/contract",
     "test:smoke": "vitest run tests/integration",

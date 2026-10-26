@@ -17,6 +17,7 @@ coverage/
 playwright-report/
 test-results/
 evaluation/model-bakeoff/output/
+evaluation/model-bakeoff/*.sqlite*
 worker-dist/
 *.tsbuildinfo
 *.log

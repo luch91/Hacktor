@@ -1,6 +1,6 @@
 # M2A small model-selection bake-off protocol
 
-Status: preregistration proposal. One free Together Idea Card and two unsuccessful free OpenRouter requests were observed on 2026-10-26. No nine-card slate, reviewer score or paid call has been completed. This pilot chooses candidate models; it does not replace the separate 48-brief Hacktor-versus-generic formal evaluation in [M2A_EVALUATION_READINESS.md](M2A_EVALUATION_READINESS.md).
+Status: preregistration protocol. A free Together Idea Card and one structurally valid free nine-card slate have been observed, along with unsuccessful free requests. No semantically accepted slate, independent reviewer score or paid call has been completed. The paid slate prompt is frozen as `m2a-pilot-v2` and the six-brief fixture SHA-256 is `334808F84262ECAFF3034FFB6A4951419BE20E98D5EBBE333B2FA9A0750FA5A1`. This pilot chooses candidate models; it does not replace the separate 48-brief Hacktor-versus-generic formal evaluation in [M2A_EVALUATION_READINESS.md](M2A_EVALUATION_READINESS.md).
 
 ## Order and input control
 

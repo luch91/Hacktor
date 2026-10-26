@@ -94,7 +94,7 @@ export function buildRequest({ provider, model, fixture, task = 'card', maxOutpu
   }
   const schema = task === 'slate' ? slateSchema : cardSchema;
   const instruction = task === 'slate'
-    ? `Create nine substantive ideas, one per strategy: ${strategies.join(', ')}.`
+    ? `Create nine substantive ideas, one per strategy: ${strategies.join(', ')}. Each idea must change the underlying problem, beneficiary role, causal mechanism, or implementation path. Use at least seven genuinely distinct mechanisms and three beneficiary roles. Reject reworded scheduling or logging variants, generic dashboards and chatbots, invented datasets, and unavailable dependencies. Describe a concrete demonstration within the brief's build time.`
     : `Create one idea using strategy ${strategies[0]}.`;
   const body = {
     model,
@@ -225,10 +225,13 @@ export async function runCandidate({ provider, model, apiKey, fixture, task = 'c
   };
 }
 
-export async function loadFixture(path) {
-  const fixture = JSON.parse(await readFile(path, 'utf8'));
+export async function loadFixture(path, briefId) {
+  const document = JSON.parse(await readFile(path, 'utf8'));
+  const fixture = Array.isArray(document.briefs)
+    ? document.briefs.find((item) => item.id === briefId) : document;
   if (!fixture.brief || !Array.isArray(fixture.hard_constraints)) {
     throw new BakeoffError('invalid_fixture', 'Fixture is invalid.');
   }
-  return fixture;
+  return { ...fixture, hard_constraints: fixture.hard_constraints.map((item) =>
+    typeof item === 'string' ? { id: item } : item) };
 }
