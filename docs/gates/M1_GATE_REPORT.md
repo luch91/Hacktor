@@ -63,9 +63,12 @@ No guest capability or CSRF token was recorded in this report.
 | `pnpm contracts:check` | PASS |
 | `pnpm security:secrets` | PASS |
 | `pnpm typography:check` | PASS |
-| `pnpm test:ui` | PASS when run as the four project groups: desktop, mobile 390px, mobile 320px, and tablet 768px |
+| `pnpm verify` | PASS, uninterrupted exit code 0 |
+| `pnpm test:ui` | PASS, 4 tests across desktop, mobile 390px, mobile 320px, and tablet 768px in 51.3 seconds |
+| Fresh clone `pnpm install --frozen-lockfile` | PASS, 86 packages from the committed lockfile |
+| Fresh clone `pnpm verify` | PASS, exit code 0 from commit `796d8e2` |
 
-Clean-install, complete `pnpm verify`, commit, and GitHub Actions evidence are recorded below after the reviewed branch is pushed.
+GitHub Actions and draft pull request evidence are added after the reviewed branch is pushed.
 
 ## Visual evidence
 
