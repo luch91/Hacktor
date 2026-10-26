@@ -2,7 +2,7 @@
 
 **Milestone:** M0
 **Date:** 26 October 2026
-**Decision:** CONDITIONAL GO pending remote CI and Cloudflare account verification
+**Decision:** CONDITIONAL GO pending rotated-token verification and Cloudflare account selection
 **Production status:** Not deployed and not authorized for deployment
 
 ## Delivered
@@ -63,11 +63,19 @@ The clean-room install and complete local gate passed before any remote mutation
 | Web build | PASS | 17 modules built successfully |
 | Worker packaging | PASS | Web, AI consumer, and ingestion dry runs exited 0 with local bindings only |
 | GitHub credential discovery | PASS | `gh api user --jq .login` returned `luch91`; keyring token includes `repo` and `workflow` scopes |
-| Git write access | PASS | Branch rename to `main` succeeded; first commit remains pending this report review |
-| GitHub Actions | PENDING | Remote creation and push follow the verified local commit |
-| Cloudflare account access | BLOCKED | No rotated token is present in the environment; the compromised token was not reused |
+| Git write access | PASS | Root M0 commit `5a9c97160c14178d5736c74738e07bfc1e40c69c` created on `main` |
+| GitHub Actions | PASS | Hosted run `40277359090` completed successfully in 34 seconds for the root M0 commit |
+| Cloudflare account access | PARTIAL | Wrangler 4.129.0 verified encrypted OAuth access and returned two accounts; no rotated API token is present and the intended account has not been selected |
 
-The clean-room commands used the exact pinned Vite 8.2.2, Vitest 4.1.7, and Wrangler 4.129.0 toolchain. CI must independently confirm the same lockfile before a CI badge is added.
+The clean-room commands used the exact pinned Vite 8.2.2, Vitest 4.1.7, and Wrangler 4.129.0 toolchain. GitHub Actions independently confirmed the same frozen lockfile and full `pnpm verify` command. The README CI badge was added only after that successful run.
+
+## Remote evidence
+
+- Repository: `https://github.com/luch91/Hacktor`
+- Visibility: private
+- Root M0 commit: `5a9c97160c14178d5736c74738e07bfc1e40c69c`
+- Successful CI run: `https://github.com/luch91/Hacktor/actions/runs/40277359090`
+- GitHub Actions job: `verify`, completed in 34 seconds
 
 ## UI and browser verification
 
@@ -107,17 +115,18 @@ The interactive browser-control surface was unavailable, so screenshots and DOM 
 - Deployment workflows require a repository variable, protected environment, secrets, explicit manual dispatch, and non-placeholder D1 identifiers.
 - Production deploy additionally requires the exact `DEPLOY_PRODUCTION` input.
 - `workers_dev` and preview URLs are disabled in checked-in Worker configurations.
-- No DNS, route, custom domain, Cloudflare resource, GitHub remote, commit, or deployment had been created at the time of this pre-push report.
+- The private GitHub repository and M0 commit were created after the local gate passed.
+- No DNS, route, custom domain, Cloudflare resource, or deployment was created or changed.
 
 ## Outstanding work and blocked prerequisites
 
-- GitHub owner and authenticated identity are confirmed as `luch91`.
-- Cloudflare identity and resource inventory remain unverified because no rotated credential is present in the environment.
-- The first CI run is not observed. README correctly contains no status badge.
+- GitHub owner, authenticated identity, repository, root commit, and hosted CI execution are verified.
+- Cloudflare OAuth access is verified, but Wrangler returned both `GenScope` and `Judithorluchee@gmail.com's Account`. The intended account must be selected explicitly before any future resource operation.
+- A rotated Cloudflare API token was not supplied through the environment, so the requested token-specific verification remains open. The compromised token was not reused.
 - Staging and production D1 UUIDs remain deliberate placeholders.
 
 ## Owner decision required
 
-Do not advance to M1 or deploy. Create and push the verified M0 commit, observe CI, and verify Cloudflare with a newly rotated token supplied through a secure secret channel. Do not provision Cloudflare resources or replace environment placeholders as part of account verification.
+Do not advance to M1 or deploy. Supply a newly rotated Cloudflare token through a secure environment secret and identify the intended account by name or account ID. Verify only identity and token permissions. Do not provision Cloudflare resources or replace environment placeholders as part of account verification.
 
-**Gate decision:** CONDITIONAL GO for review of the local M0 foundation. NO GO for remote deployment, production, README CI badge, or M1 advancement until the blocked evidence is closed.
+**Gate decision:** CONDITIONAL GO for the M0 foundation. NO GO for Cloudflare resource operations, remote deployment, production, or M1 advancement until rotated-token verification and account selection are complete and the owner explicitly approves the gate.

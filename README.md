@@ -1,8 +1,10 @@
 # Hacktor
 
+[![CI](https://github.com/luch91/Hacktor/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/luch91/Hacktor/actions/workflows/ci.yml)
+
 Hacktor is a Deep Ideation Studio for builders who want differentiated, evidence-aware, build-ready hackathon concepts. This repository currently contains the Milestone M0 foundation only.
 
-No CI status badge is shown yet because this local repository has not been pushed and no remote workflow run has been observed. No deployment, coverage, release, or license badge is shown because those states do not yet exist or have not been verified.
+The CI badge reflects the real `CI` workflow on `main`. No deployment, coverage, release, or license badge is shown because those states do not yet exist or have not been verified.
 
 ## Current status
 
