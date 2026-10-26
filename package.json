@@ -1,0 +1,34 @@
+{
+  "name": "hacktor",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Hacktor Deep Ideation Studio monorepo",
+  "packageManager": "pnpm@11.25.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "pnpm --recursive --if-present build",
+    "dev": "pnpm --filter @hacktor/web dev",
+    "format": "node scripts/check-format.mjs",
+    "format:check": "node scripts/check-format.mjs",
+    "lint": "node scripts/check-format.mjs && pnpm typography:check",
+    "typecheck": "tsc --build",
+    "test": "vitest run",
+    "test:db": "python scripts/test-migration.py",
+    "test:contracts": "vitest run tests/contract",
+    "test:smoke": "vitest run tests/integration",
+    "contracts:check": "node scripts/check-contract-drift.mjs",
+    "security:secrets": "node scripts/check-secrets.mjs",
+    "typography:check": "node scripts/check-no-emdash.mjs",
+    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm test:db && pnpm contracts:check && pnpm security:secrets && pnpm build && pnpm typography:check"
+  },
+  "devDependencies": {
+    "@types/node": "26.4.1",
+    "@types/react": "19.2.18",
+    "typescript": "5.9.3",
+    "vite": "8.2.2",
+    "vitest": "4.1.7",
+    "wrangler": "4.129.0"
+  }
+}

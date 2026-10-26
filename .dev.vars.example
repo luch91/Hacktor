@@ -1,0 +1,4 @@
+# Copy to .dev.vars for local development. Never commit real values.
+HACKTOR_ENV=local
+# Future milestones may require provider and connector secrets.
+# Set them with Wrangler secrets for deployed environments.

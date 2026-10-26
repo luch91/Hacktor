@@ -1,0 +1,91 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "hacktor-ai-consumer-local",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-26",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "hacktor-local",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "../../database/migrations"
+    }
+  ],
+  "queues": {
+    "consumers": [
+      {
+        "queue": "hacktor-ai-jobs-local",
+        "max_batch_size": 5,
+        "max_batch_timeout": 5,
+        "max_retries": 3,
+        "retry_delay": 60,
+        "dead_letter_queue": "hacktor-ai-jobs-dlq-local",
+        "max_concurrency": 1
+      }
+    ]
+  },
+  "vars": {
+    "HACKTOR_ENV": "local",
+    "AI_PROCESSING_ENABLED": "false"
+  },
+  "observability": {
+    "enabled": true,
+    "logs": { "enabled": true, "head_sampling_rate": 1 },
+    "traces": { "enabled": true, "head_sampling_rate": 0.01 }
+  },
+  "env": {
+    "staging": {
+      "name": "hacktor-ai-consumer-staging",
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "hacktor-staging",
+          "database_id": "11111111-1111-1111-1111-111111111111",
+          "migrations_dir": "../../database/migrations"
+        }
+      ],
+      "queues": {
+        "consumers": [
+          {
+            "queue": "hacktor-ai-jobs-staging",
+            "max_batch_size": 5,
+            "max_batch_timeout": 5,
+            "max_retries": 3,
+            "retry_delay": 60,
+            "dead_letter_queue": "hacktor-ai-jobs-dlq-staging",
+            "max_concurrency": 1
+          }
+        ]
+      },
+      "vars": { "HACKTOR_ENV": "staging", "AI_PROCESSING_ENABLED": "false" }
+    },
+    "production": {
+      "name": "hacktor-ai-consumer-production",
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "hacktor-production",
+          "database_id": "22222222-2222-2222-2222-222222222222",
+          "migrations_dir": "../../database/migrations"
+        }
+      ],
+      "queues": {
+        "consumers": [
+          {
+            "queue": "hacktor-ai-jobs-production",
+            "max_batch_size": 5,
+            "max_batch_timeout": 5,
+            "max_retries": 3,
+            "retry_delay": 60,
+            "dead_letter_queue": "hacktor-ai-jobs-dlq-production",
+            "max_concurrency": 1
+          }
+        ]
+      },
+      "vars": { "HACKTOR_ENV": "production", "AI_PROCESSING_ENABLED": "false" }
+    }
+  }
+}

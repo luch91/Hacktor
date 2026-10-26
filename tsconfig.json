@@ -1,0 +1,12 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/contracts" },
+    { "path": "packages/ideation" },
+    { "path": "packages/providers" },
+    { "path": "packages/ui" },
+    { "path": "apps/web" },
+    { "path": "workers/ai-consumer" },
+    { "path": "workers/ingestion" }
+  ]
+}

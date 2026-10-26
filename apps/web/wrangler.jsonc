@@ -1,0 +1,72 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "hacktor-web-local",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-10-26",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "upload_source_maps": true,
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "hacktor-local",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "../../database/migrations"
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "AI_JOBS",
+        "queue": "hacktor-ai-jobs-local"
+      }
+    ]
+  },
+  "vars": {
+    "HACKTOR_ENV": "local"
+  },
+  "observability": {
+    "enabled": true,
+    "logs": { "enabled": true, "head_sampling_rate": 1 },
+    "traces": { "enabled": true, "head_sampling_rate": 0.01 }
+  },
+  "env": {
+    "staging": {
+      "name": "hacktor-web-staging",
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "hacktor-staging",
+          "database_id": "11111111-1111-1111-1111-111111111111",
+          "migrations_dir": "../../database/migrations"
+        }
+      ],
+      "queues": {
+        "producers": [{ "binding": "AI_JOBS", "queue": "hacktor-ai-jobs-staging" }]
+      },
+      "vars": { "HACKTOR_ENV": "staging" }
+    },
+    "production": {
+      "name": "hacktor-web-production",
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "hacktor-production",
+          "database_id": "22222222-2222-2222-2222-222222222222",
+          "migrations_dir": "../../database/migrations"
+        }
+      ],
+      "queues": {
+        "producers": [{ "binding": "AI_JOBS", "queue": "hacktor-ai-jobs-production" }]
+      },
+      "vars": { "HACKTOR_ENV": "production" }
+    }
+  }
+}

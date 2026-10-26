@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "jsx": "react-jsx",
+    "outDir": ".types",
+    "rootDir": ".",
+    "types": ["./worker-configuration.d.ts"]
+  },
+  "include": ["src", "vite.config.ts", "worker-configuration.d.ts"],
+  "references": [{ "path": "../../packages/ui" }]
+}

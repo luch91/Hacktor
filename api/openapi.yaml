@@ -1,0 +1,332 @@
+openapi: 3.1.0
+info:
+  title: Hacktor Product API
+  version: 1.0.0
+  description: Proposed contract for Hacktor MVP. No live deployment is claimed.
+servers:
+  - url: /api/v1
+security:
+  - sessionCookie: []
+paths:
+  /hackathons:
+    get:
+      tags: [Discovery]
+      summary: List approved public hackathons
+      security: []
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string, maxLength: 120 }
+        - in: query
+          name: coverage
+          schema: { $ref: '#/components/schemas/SourceStatus' }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        '200':
+          description: Published public events
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HackathonsResponse' }
+  /hackathons/{id}:
+    get:
+      tags: [Discovery]
+      security: []
+      summary: Read approved event snapshot
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { $ref: '#/components/responses/Data' }
+        '404': { $ref: '#/components/responses/Error' }
+  /briefs/parse:
+    post:
+      tags: [Intake]
+      summary: Parse user-provided brief into reviewable context
+      description: P0 accepts text. Remote fetching is not performed by this endpoint.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string, minLength: 30, maxLength: 40000 }
+                event_id: { type: string, maxLength: 64 }
+      responses:
+        '200': { $ref: '#/components/responses/Data' }
+        '422': { $ref: '#/components/responses/Error' }
+  /sessions:
+    post:
+      tags: [Studio]
+      summary: Create guest or authenticated ideation session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mode, title]
+              properties:
+                mode: { type: string, enum: [hackathon_first, idea_first] }
+                title: { type: string, maxLength: 140 }
+                event_snapshot_id: { type: string, maxLength: 64 }
+                original_idea_text: { type: string, maxLength: 12000 }
+      responses:
+        '201': { $ref: '#/components/responses/Data' }
+        '401': { $ref: '#/components/responses/Error' }
+  /sessions/{id}:
+    get:
+      tags: [Studio]
+      summary: Read owner-authorized session
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { $ref: '#/components/responses/Data' }
+        '404': { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [Studio]
+      summary: Begin owner-authorized deletion
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '202': { $ref: '#/components/responses/Data' }
+        '404': { $ref: '#/components/responses/Error' }
+  /sessions/{id}/context:
+    patch:
+      tags: [Intake]
+      summary: Confirm edited context with optimistic concurrency
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - in: header
+          name: If-Match
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [context]
+              properties:
+                context: { type: object }
+      responses:
+        '200': { $ref: '#/components/responses/Data' }
+        '409': { $ref: '#/components/responses/Error' }
+  /sessions/{id}/jobs:
+    post:
+      tags: [Intelligence]
+      summary: Queue map or diverse slate generation
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [job_type]
+              properties:
+                job_type: { type: string, enum: [opportunity_map, diverse_slate] }
+                preferences: { type: object }
+      responses:
+        '202': { $ref: '#/components/responses/AcceptedJob' }
+        '409': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/Error' }
+  /jobs/{id}:
+    get:
+      tags: [Intelligence]
+      summary: Poll durable job state
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Authoritative job progress
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/Job' }
+        '404': { $ref: '#/components/responses/Error' }
+  /sessions/{id}/ideas:
+    get:
+      tags: [Studio]
+      summary: List immutable idea versions and lineage
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { $ref: '#/components/responses/Data' }
+  /ideas/{id}/actions:
+    post:
+      tags: [Studio]
+      summary: Challenge, branch, combine, refine, reject or pin
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IdeaAction' }
+      responses:
+        '202': { $ref: '#/components/responses/AcceptedJob' }
+        '200': { $ref: '#/components/responses/Data' }
+        '409': { $ref: '#/components/responses/Error' }
+  /ideas/{id}/evidence:
+    get:
+      tags: [Research]
+      summary: Read linked claims and coverage
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { $ref: '#/components/responses/Data' }
+  /ideas/{id}/validation:
+    post:
+      tags: [Research]
+      summary: Queue explainable assessment
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202': { $ref: '#/components/responses/AcceptedJob' }
+  /ideas/{id}/blueprints:
+    post:
+      tags: [Blueprint]
+      summary: Generate a blueprint bound to an idea version
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202': { $ref: '#/components/responses/AcceptedJob' }
+  /blueprints/{id}/export.md:
+    get:
+      tags: [Blueprint]
+      summary: Export owner-authorized Markdown
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Markdown document
+          content:
+            text/markdown:
+              schema: { type: string }
+        '404': { $ref: '#/components/responses/Error' }
+  /admin/sources/{id}/review:
+    post:
+      tags: [Administration]
+      summary: Admin approval of source snapshot
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision, reason]
+              properties:
+                decision: { type: string, enum: [approve, reject] }
+                reason: { type: string, minLength: 3, maxLength: 500 }
+      responses:
+        '200': { $ref: '#/components/responses/Data' }
+        '403': { $ref: '#/components/responses/Error' }
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: hacktor_session
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, minLength: 4, maxLength: 64 }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, minLength: 8, maxLength: 128 }
+  schemas:
+    SourceStatus:
+      type: string
+      enum: [verified_brief, partial_evidence, user_provided]
+    HackathonsResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            required: [id, title, coverage_state]
+            properties:
+              id: { type: string }
+              title: { type: string }
+              coverage_state: { $ref: '#/components/schemas/SourceStatus' }
+    Job:
+      type: object
+      required: [id, status, job_type]
+      properties:
+        id: { type: string }
+        job_type: { type: string }
+        status: { type: string, enum: [queued, running, validating, retry_wait, completed, failed, blocked_quota, cancelled] }
+        stage: { type: string }
+        progress: { type: object }
+        artifact_ids: { type: array, items: { type: string } }
+        error: { $ref: '#/components/schemas/ErrorBody' }
+    IdeaAction:
+      type: object
+      required: [command]
+      properties:
+        command: { type: string, enum: [make_stranger, make_realistic, challenge, find_other_problem, switch_domain, combine, branch, reject, pin, research_more] }
+        instruction: { type: string, maxLength: 1500 }
+        other_parent_version_id: { type: string }
+        reason: { type: string, maxLength: 600 }
+    ErrorBody:
+      type: object
+      required: [code, message, retryable, request_id]
+      properties:
+        code: { type: string }
+        message: { type: string }
+        retryable: { type: boolean }
+        request_id: { type: string }
+  responses:
+    Data:
+      description: Data envelope; route-specific type enforced in generated application validators
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data]
+            properties:
+              data: {}
+    AcceptedJob:
+      description: Durable job accepted
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data]
+            properties:
+              data:
+                type: object
+                required: [job_id, status]
+                properties:
+                  job_id: { type: string }
+                  status: { type: string, const: queued }
+    Error:
+      description: Structured error
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error: { $ref: '#/components/schemas/ErrorBody' }
+

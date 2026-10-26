@@ -1,0 +1,10 @@
+{
+  "name": "@hacktor/ingestion",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "types:bindings": "wrangler types worker-configuration.d.ts && node ../../scripts/normalize-generated-text.mjs worker-configuration.d.ts"
+  }
+}

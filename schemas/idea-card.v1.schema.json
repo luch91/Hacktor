@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.hacktor.local/idea-card.v1.schema.json",
+  "title": "Hacktor Idea Card v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "name", "one_liner", "target_user", "problem", "underexplored_insight", "mechanism", "demo_moment", "strategy", "major_failure_mode", "evidence_status", "build_difficulty", "novelty_hypothesis", "hard_constraint_ids"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "name": {"type": "string", "minLength": 3, "maxLength": 80},
+    "one_liner": {"type": "string", "minLength": 15, "maxLength": 240},
+    "target_user": {"type": "string", "minLength": 3, "maxLength": 180},
+    "problem": {"type": "string", "minLength": 10, "maxLength": 600},
+    "underexplored_insight": {"type": "string", "minLength": 15, "maxLength": 600},
+    "mechanism": {"type": "string", "minLength": 15, "maxLength": 850},
+    "demo_moment": {"type": "string", "minLength": 15, "maxLength": 500},
+    "strategy": {"enum": ["neglected_actor", "constraint_inversion", "cross_domain_transfer", "negative_space", "second_order", "failure_first", "counterfactual", "low_resource", "institutional_bottleneck"]},
+    "major_failure_mode": {"type": "string", "minLength": 15, "maxLength": 500},
+    "evidence_status": {"enum": ["verified", "partial", "user_provided", "unverified", "insufficient_evidence"]},
+    "build_difficulty": {"enum": ["low", "medium", "high"]},
+    "novelty_hypothesis": {"type": "string", "minLength": 10, "maxLength": 500},
+    "hackathon_fit": {"type": ["string", "null"], "maxLength": 500},
+    "dependencies": {"type": "array", "items": {"type": "string", "maxLength": 200}, "maxItems": 12},
+    "hard_constraint_ids": {"type": "array", "items": {"type": "string", "maxLength": 64}, "uniqueItems": true},
+    "source_ids": {"type": "array", "items": {"type": "string", "maxLength": 64}, "uniqueItems": true},
+    "unknowns": {"type": "array", "items": {"type": "string", "maxLength": 300}, "maxItems": 10}
+  }
+}
+
