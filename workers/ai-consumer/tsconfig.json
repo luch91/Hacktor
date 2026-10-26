@@ -9,5 +9,9 @@
     "types": ["./worker-configuration.d.ts"]
   },
   "include": ["src", "worker-configuration.d.ts"],
-  "references": [{ "path": "../../packages/contracts" }]
+  "references": [
+    { "path": "../../packages/contracts" },
+    { "path": "../../packages/ideation" },
+    { "path": "../../packages/providers" }
+  ]
 }

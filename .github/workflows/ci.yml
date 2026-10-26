@@ -27,5 +27,9 @@ jobs:
           cache: pnpm
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
-      - name: Verify M0 gate
+      - name: Verify M1 gate
         run: pnpm verify
+      - name: Install browser runtime
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Verify responsive Studio journeys
+        run: pnpm test:ui

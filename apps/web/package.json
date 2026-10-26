@@ -10,6 +10,8 @@
     "types:bindings": "wrangler types worker-configuration.d.ts && node ../../scripts/normalize-generated-text.mjs worker-configuration.d.ts"
   },
   "dependencies": {
+    "@hacktor/contracts": "workspace:*",
+    "@hacktor/ideation": "workspace:*",
     "@hacktor/ui": "workspace:*",
     "react": "19.3.1",
     "react-dom": "19.3.1"

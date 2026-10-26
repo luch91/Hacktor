@@ -4,7 +4,7 @@ import tempfile
 
 
 ROOT = Path(__file__).resolve().parents[1]
-MIGRATION = ROOT / "database" / "migrations" / "0001_init.sql"
+MIGRATIONS = sorted((ROOT / "database" / "migrations").glob("*.sql"))
 
 
 def execute() -> None:
@@ -12,7 +12,8 @@ def execute() -> None:
         database = Path(directory) / "hacktor.sqlite3"
         connection = sqlite3.connect(database)
         connection.execute("PRAGMA foreign_keys = ON")
-        connection.executescript(MIGRATION.read_text(encoding="utf-8"))
+        for migration in MIGRATIONS:
+            connection.executescript(migration.read_text(encoding="utf-8"))
 
         tables = {
             row[0]
@@ -20,7 +21,16 @@ def execute() -> None:
                 "SELECT name FROM sqlite_master WHERE type IN ('table','view')"
             )
         }
-        required = {"ideation_sessions", "idea_versions", "idea_edges", "jobs", "job_outbox"}
+        required = {
+            "ideation_sessions",
+            "idea_versions",
+            "idea_edges",
+            "jobs",
+            "job_outbox",
+            "session_stage_runs",
+            "idea_pins",
+            "action_idempotency_keys",
+        }
         assert required.issubset(tables), f"Missing required tables: {required - tables}"
 
         connection.execute(
@@ -71,7 +81,10 @@ def execute() -> None:
         assert fts is not None, "Public FTS table was not created"
         connection.close()
 
-    print(f"Database migration test passed with {len(tables)} schema objects.")
+    print(
+        f"Database migration test passed with {len(tables)} schema objects "
+        f"across {len(MIGRATIONS)} forward migrations."
+    )
 
 
 if __name__ == "__main__":

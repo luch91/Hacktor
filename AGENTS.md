@@ -2,9 +2,9 @@
 
 ## Current authorization boundary
 
-- Implement only the active milestone. M0 is the current milestone.
+- Implement only the active milestone. M1 is the current milestone on `feat/m1-deep-ideation`.
 - Keep remote deployments, production resources, DNS, custom domains, and merges disabled until the owner explicitly authorizes them.
-- The authorized GitHub owner is `luch91`. Authentication and the exact repository name still require verification before the first push.
+- The authorized GitHub owner and repository are verified as `luch91/Hacktor`.
 
 ## Product invariants
 
@@ -21,4 +21,4 @@
 - Use strict TypeScript, versioned `/api/v1` routes, snake_case payloads, and structured data or error envelopes.
 - Scope private reads and writes by owner on the server.
 - Keep local, staging, and production Cloudflare resources separate.
-- Run the M0 gate commands and record their actual results before requesting review.
+- Run the M1 gate commands and record their actual results before requesting review.
