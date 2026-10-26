@@ -23,6 +23,7 @@ Jobs now use an atomic claim with a lease token, checkpoint stages in transactio
 | Fresh local browser journeys | PASS, 4 Playwright tests across desktop, 390px mobile, 320px mobile, and 768px tablet using a newly built Worker and migrated local D1. The first run reused an old server and failed; the fresh-server rerun passed. |
 | Clean clone | PASS, `pnpm install --frozen-lockfile` installed 86 packages from the committed lockfile; `pnpm verify` passed from the fresh clone of `75ca4e0`. |
 | GitHub Actions | PASS for `75ca4e0fb227393e198ea7e1335a69628114299a`, including locked install, verification, Chromium setup, and responsive journeys. [Run 40295547550](https://github.com/luch91/Hacktor/actions/runs/40295547550). |
+| Final code CI | PASS for `cdbd90ec07dd2f0844af46d8386e99a6c39219cd`, including locked install, `pnpm verify`, browser setup, and 4 responsive journeys. [Run 40296046757](https://github.com/luch91/Hacktor/actions/runs/40296046757). |
 
 The current integration tests do not prove behavior against remote Cloudflare D1 or a paid model. A live invocation interrupted after its budget reservation is deliberately stopped for manual review because its external outcome cannot be inferred safely. The action lease path still needs a stronger transactional fence against a slow writer that resumes after its lease expires. These are remaining reliability blockers for an unconditional GO.
 
