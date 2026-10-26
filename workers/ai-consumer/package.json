@@ -8,6 +8,8 @@
     "types:bindings": "wrangler types worker-configuration.d.ts && node ../../scripts/normalize-generated-text.mjs worker-configuration.d.ts"
   },
   "dependencies": {
-    "@hacktor/contracts": "workspace:*"
+    "@hacktor/contracts": "workspace:*",
+    "@hacktor/ideation": "workspace:*",
+    "@hacktor/providers": "workspace:*"
   }
 }

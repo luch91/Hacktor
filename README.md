@@ -2,22 +2,25 @@
 
 [![CI](https://github.com/luch91/Hacktor/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/luch91/Hacktor/actions/workflows/ci.yml)
 
-Hacktor is a Deep Ideation Studio for builders who want differentiated, evidence-aware, build-ready hackathon concepts. This repository currently contains the Milestone M0 foundation only.
+Hacktor is a Deep Ideation Studio for builders who want differentiated, evidence-aware, build-ready hackathon concepts. The owner accepted M1 for local engineering at `983b8410c1f8c4980790d7ea287c1294de0456e6`. PR #1 remains draft and unmerged. M2 has planning documents only.
 
 The CI badge reflects the real `CI` workflow on `main`. No deployment, coverage, release, or license badge is shown because those states do not yet exist or have not been verified.
 
 ## Current status
 
-- Milestone: M0 repository and infrastructure foundation
-- Runtime: React static assets plus a same-origin Cloudflare Worker API
-- Data: canonical D1 baseline imported and tested locally
-- Async boundary: Queue producer, consumer, bounded retry, and DLQ configuration scaffolded
+- Milestone: M1 Core Deep Ideation Studio, accepted for local engineering only
+- Runtime: responsive React Studio plus a same-origin Cloudflare Worker API
+- Data: private guest sessions, immutable idea lineage, stage checkpoints, jobs, evidence, scorecards, and blueprints in local D1
+- Async boundary: transactional outbox, Queue producer and consumer, bounded retry, idempotency, usage limits, and DLQ configuration
 - Ingestion: Cron Worker present with every external connector disabled
 - Remote deployment: not performed
-- Live inference: not implemented
+- Local inference: deterministic test adapter, labeled in the interface and job records
+- Live inference: adapter implemented but blocked pending an approved credential and budget
 - Live source access: not implemented
 
-The interface labels itself as a foundation preview. It does not present fixture output as live AI or research.
+The interface never presents deterministic output as live AI or hypotheses as verified research.
+
+M2 is proposed in the [implementation plan](docs/milestones/M2_IMPLEMENTATION_PLAN.md), [acceptance criteria](docs/milestones/M2_ACCEPTANCE_CRITERIA.md), [model evaluation plan](docs/ai/MODEL_EVALUATION_PLAN.md), [source integration plan](docs/research/SOURCE_INTEGRATION_PLAN.md), and [cost and risk plan](docs/operations/M2_COST_AND_RISK_PLAN.md). These documents do not authorize implementation or deployment.
 
 ## Product invariants
 
@@ -32,7 +35,7 @@ The implementation preserves the eight-stage workflow:
 7. Converge
 8. Blueprint
 
-The planned production workflow also preserves nine idea-generation strategies, immutable branches, critiques that do not rewrite ideas, evidence-aware validation, and blueprints bound to exact idea versions. Those product behaviors belong to later gated milestones and are not claimed as implemented here.
+M1 implements all nine idea-generation strategies, immutable branches, two-parent combination, critiques that do not rewrite ideas, explicit evidence coverage, and Markdown blueprints bound to exact idea versions. Automated source research remains disabled and is shown as blocked in the workflow.
 
 ## Local setup
 
@@ -60,15 +63,25 @@ Run the application Worker locally after building static assets:
 
 ```sh
 pnpm --filter @hacktor/web build
+pnpm --filter @hacktor/web exec wrangler d1 migrations apply DB --local
 pnpm --filter @hacktor/web exec wrangler dev
 ```
 
-The health route is `GET /api/v1/health` and returns a structured `{data}` envelope.
+The health route is `GET /api/v1/health` and returns a structured `{data}` envelope. Local product jobs use `deterministic_test_adapter`; this is test behavior, not live inference.
+
+Run responsive browser journeys at 320px, 390px, 768px, and desktop widths:
+
+```sh
+pnpm exec playwright install chromium
+pnpm test:ui
+```
+
+Verified visual evidence is stored at [desktop Studio](docs/evidence/m1-desktop-studio.png) and [mobile Studio](docs/evidence/m1-mobile-studio.png).
 
 ## Repository map
 
 - `apps/web`: React SPA and same-origin API Worker
-- `workers/ai-consumer`: queue boundary and idempotent fixture processor
+- `workers/ai-consumer`: durable stage processor with deterministic and credential-gated provider boundaries
 - `workers/ingestion`: disabled-by-default scheduled connector boundary
 - `packages/contracts`: shared API and Idea Card contracts
 - `packages/ideation`: canonical stage and strategy vocabulary
@@ -89,7 +102,7 @@ Production deployment is a manual GitHub Actions workflow with an explicit confi
 
 All automated source connectors are disabled. Brabble and GitHub are the first approved implementation candidates, but credentials and live access are not part of M0. Devpost, DoraHacks, TAIKAI, and other sources remain disabled without recorded authorization.
 
-Private user content is not accepted by this M0 shell. Later milestones must enforce owner scope, secure guest capabilities, anti-CSRF controls, and private-by-default storage before accepting it.
+Private content is accepted only after issuing an opaque guest capability. The server stores its hash, scopes every private read and write by the authenticated owner, enforces expiry and anti-CSRF checks, and denies cross-owner access by default.
 
 ## Typography policy
 

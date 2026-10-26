@@ -59,6 +59,39 @@ export interface JobQueueMessage {
   schema_version: '1.0';
 }
 
+export const ideaCommands = [
+  'make_stranger',
+  'make_realistic',
+  'challenge',
+  'find_other_problem',
+  'switch_domain',
+  'combine',
+  'branch',
+  'reject',
+  'pin',
+  'research_more',
+] as const;
+
+export type IdeaCommand = (typeof ideaCommands)[number];
+
+export interface IdeaActionRequest {
+  command: IdeaCommand;
+  instruction?: string;
+  other_parent_version_id?: string;
+  reason?: string;
+}
+
+export interface SessionContext {
+  summary: string;
+  beneficiaries: string[];
+  goals: string[];
+  hard_constraints: Array<{ id: string; text: string }>;
+  soft_constraints: Array<{ id: string; text: string }>;
+  unknowns: string[];
+  confirmed: boolean;
+  source_status: 'user_provided';
+}
+
 type ValidationResult =
   | { success: true; data: IdeaCardV1 }
   | { success: false; errors: readonly string[] };

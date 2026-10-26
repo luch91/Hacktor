@@ -2,7 +2,7 @@
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "hacktor-web-local",
   "main": "src/worker.ts",
-  "compatibility_date": "2026-10-26",
+  "compatibility_date": "2026-09-10",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": false,
   "preview_urls": false,
@@ -29,8 +29,10 @@
       }
     ]
   },
+  "triggers": { "crons": ["*/5 * * * *"] },
   "vars": {
-    "HACKTOR_ENV": "local"
+    "HACKTOR_ENV": "local",
+    "INFERENCE_MODE": "deterministic"
   },
   "observability": {
     "enabled": true,
@@ -51,7 +53,7 @@
       "queues": {
         "producers": [{ "binding": "AI_JOBS", "queue": "hacktor-ai-jobs-staging" }]
       },
-      "vars": { "HACKTOR_ENV": "staging" }
+      "vars": { "HACKTOR_ENV": "staging", "INFERENCE_MODE": "disabled" }
     },
     "production": {
       "name": "hacktor-web-production",
@@ -66,7 +68,7 @@
       "queues": {
         "producers": [{ "binding": "AI_JOBS", "queue": "hacktor-ai-jobs-production" }]
       },
-      "vars": { "HACKTOR_ENV": "production" }
+      "vars": { "HACKTOR_ENV": "production", "INFERENCE_MODE": "disabled" }
     }
   }
 }

@@ -1,8 +1,8 @@
 # Source access status
 
-All connectors are disabled in M0.
+All connectors remain disabled in M1.
 
-| Source | Intended use | M0 state | Requirement before activation |
+| Source | Intended use | M1 state | Requirement before activation |
 | --- | --- | --- | --- |
 | Brabble | Competition discovery | Disabled | Authorized API key, current schema check, attribution, cache, rate and retention controls |
 | GitHub | Public comparable projects | Disabled | Authenticated official API, license handling, search budget and provenance |
