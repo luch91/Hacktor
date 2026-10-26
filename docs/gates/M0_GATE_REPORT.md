@@ -2,7 +2,7 @@
 
 **Milestone:** M0
 **Date:** 26 October 2026
-**Decision:** CONDITIONAL GO pending compromised-token revocation and owner approval
+**Decision:** GO for owner acceptance; M1 remains unauthorized
 **Production status:** Not deployed and not authorized for deployment
 
 ## Delivered
@@ -111,7 +111,7 @@ The interactive browser-control surface was unavailable, so screenshots and DOM 
 ## Security and operations
 
 - No secret value is present in source or examples.
-- The previously exposed Cloudflare token is classified as compromised. It was not reused during remediation and must never be reused. Disposal remains a dashboard action because the refreshed Wrangler OAuth session does not grant API token administration.
+- The previously exposed Cloudflare token was classified as compromised, was never reused during remediation, and was revoked by the owner on 26 October 2026.
 - Refreshed Wrangler OAuth credentials are encrypted at rest through Windows Credential Manager.
 - Deployment workflows require a repository variable, protected environment, secrets, explicit manual dispatch, and non-placeholder D1 identifiers.
 - Production deploy additionally requires the exact `DEPLOY_PRODUCTION` input.
@@ -119,15 +119,15 @@ The interactive browser-control surface was unavailable, so screenshots and DOM 
 - The private GitHub repository and M0 commit were created after the local gate passed.
 - No DNS, route, custom domain, Cloudflare resource, or deployment was created or changed.
 
-## Outstanding work and blocked prerequisites
+## Final verified state and retained deployment blockers
 
 - GitHub owner, authenticated identity, repository, root commit, and hosted CI execution are verified.
 - Cloudflare OAuth access and the intended account are verified. No Cloudflare resource inventory or mutation was performed.
-- The compromised API token must be deleted or rolled from `https://dash.cloudflare.com/profile/api-tokens`; the compromised secret was not reused to revoke itself.
+- The owner confirmed that the compromised API token was revoked. The compromised secret was not reused to revoke itself.
 - Staging and production D1 UUIDs remain deliberate placeholders.
 
 ## Owner decision required
 
-Do not advance to M1 or deploy. Delete or roll the compromised API token from the Cloudflare dashboard, then explicitly approve or reject the M0 gate. Do not provision Cloudflare resources or replace environment placeholders as part of token disposal.
+Do not advance to M1 or deploy. The M0 evidence is ready for owner acceptance. A separate explicit authorization is required before M1, Cloudflare resource provisioning, remote deployment, DNS, routes, or production work.
 
-**Gate decision:** CONDITIONAL GO for the M0 foundation. NO GO for Cloudflare resource operations, remote deployment, production, or M1 advancement until compromised-token revocation is confirmed and the owner explicitly approves the gate.
+**Gate decision:** GO for M0 acceptance. NO GO for Cloudflare resource operations, remote deployment, production, or M1 advancement until the owner explicitly authorizes the next scope.
