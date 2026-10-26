@@ -1,0 +1,48 @@
+{
+  "observed_on": "2026-10-26",
+  "events": [
+    {
+      "source": "hacklist",
+      "external_id": "cba14ac7-5b2f-4114-af48-e80d06556253",
+      "title": "OpenCV AI Competition",
+      "organizer_text": "OpenCV Foundation and AWS",
+      "deadline_date": "2026-10-26",
+      "source_url": "https://hacklist.io/hackathon/cba14ac7-5b2f-4114-af48-e80d06556253",
+      "registration_url": "https://opencv26.devpost.com/",
+      "source_snapshot_at": "2026-10-26T12:19:50.214Z",
+      "official_brief_verified": false
+    },
+    {
+      "source": "hacklist",
+      "external_id": "530479b9-afbb-4c92-9c71-ce38f6dcab97",
+      "title": "HackMeridian 2026",
+      "source_url": "https://hacklist.io/hackathon/530479b9-afbb-4c92-9c71-ce38f6dcab97",
+      "source_snapshot_at": "2026-10-26T12:19:50.214Z",
+      "official_brief_verified": false
+    }
+  ],
+  "historical_projects": [
+    {
+      "source": "ethglobal",
+      "title": "ScalpLess",
+      "source_url": "https://ethglobal.com/showcase/scalpless-15fnr",
+      "event_text": "ETHGlobal Tokyo 2026",
+      "repository_link_observed": true,
+      "award_verified": false
+    },
+    {
+      "source": "lablab_ai",
+      "title": "SentinelMesh",
+      "source_url": "https://lablab.ai/ai-hackathons/amd-lablab-ai-academy-challenge/i-can/sentinelmesh-autonomous-ai-soc-on-amd-gpu",
+      "repository_link_observed": true,
+      "award_verified": false
+    },
+    {
+      "source": "devfolio",
+      "title": "HackEval",
+      "source_url": "https://devfolio.co/projects/hackeval-a833",
+      "repository_link_observed": true,
+      "award_verified": false
+    }
+  ]
+}
