@@ -4,7 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openLedger, reserve, dispatch, markUnknown, cancelUndispatched,
-  reconcile, snapshot, reservedMicro } from './ledger.mjs';
+  recordGeneration, reconcile, snapshot, reservedMicro } from './ledger.mjs';
 
 const base = (n = 10_000) => ({ provider: 'openrouter', model: 'm', upstream: 'A',
   briefId: 'brief', promptVersion: 'p1', schemaVersion: 's1',
@@ -74,8 +74,10 @@ test('unknown billable outcomes hold exposure and cannot be cancelled or retried
     const request = base();
     const id = reserve(db, request);
     dispatch(db, id);
+    recordGeneration(db, id, 'gen-test');
     markUnknown(db, id, 'outcome_unknown');
     assert.equal(snapshot(db).unresolved_micro, 10_000);
+    assert.equal(snapshot(db).attempts[0].generation_id, 'gen-test');
     assert.throws(() => cancelUndispatched(db, id, 'timeout'), { code: 'cannot_cancel_dispatched' });
     assert.throws(() => dispatch(db, id), { code: 'not_reserved' });
     assert.throws(() => reserve(db, request));

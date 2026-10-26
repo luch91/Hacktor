@@ -1,6 +1,6 @@
 # M2A model bake-off results
 
-Status: expanded free compatibility screen, 2026-10-26 UTC. The six-brief paid quality bake-off has not run. No paid request was made, no semantically accepted nine-card slate or independent reviewer score exists. See the frozen [pilot protocol](MODEL_BAKEOFF_PROTOCOL.md) and [candidate registry](MODEL_CANDIDATE_REGISTRY.md).
+Status: expanded free compatibility screen and stopped paid compatibility attempt, 2026-10-26 UTC. The six-brief paid quality bake-off has not run. One paid OpenRouter Qwen request was dispatched but its charge could not be reconciled. No paid output is accepted; no semantically accepted nine-card slate or independent reviewer score exists. See the frozen [pilot protocol](MODEL_BAKEOFF_PROTOCOL.md), [candidate registry](MODEL_CANDIDATE_REGISTRY.md), and [spend report](../operations/MODEL_BAKEOFF_SPEND_REPORT.md).
 
 | Attempt | Published price check | Observed result | Accepted | Usage and cost evidence |
 | --- | --- | --- | --- | --- |
@@ -15,7 +15,7 @@ The one accepted response does not establish server-side schema enforcement, nin
 
 ## Screen metrics
 
-Six free completion attempts; one locally valid card and one structurally valid nine-card slate; zero semantically accepted slates; zero paid calls; zero actual provider charges verified. The farm slate repeated the same smallholder beneficiary across all nine cards and reused scheduling, manual logging and shared-device mechanisms. It also suggested additional soil-measurement inputs despite a no-sensor-feed brief. This is a preliminary single-reviewer observation, not blinded scoring. Independent reviewer ratings remain pending. OpenRouter's failed attempts may consume free-request quota. No paid model has account-backed completion evidence. Cost per accepted slate is undefined. No quality ranking can be made.
+Six free completion attempts; one locally valid card and one structurally valid nine-card slate; zero semantically accepted slates; one paid compatibility call with unreconciled charge; zero actual provider charges verified. The farm slate repeated the same smallholder beneficiary across all nine cards and reused scheduling, manual logging and shared-device mechanisms. It also suggested additional soil-measurement inputs despite a no-sensor-feed brief. This is a preliminary single-reviewer observation, not blinded scoring. Independent reviewer ratings remain pending. OpenRouter's failed attempts may consume free-request quota. No paid model has an accepted completion. Cost per accepted slate is undefined. No quality ranking can be made.
 
 ## Pending
 

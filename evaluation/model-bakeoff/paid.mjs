@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { buildRequest, loadFixture, validateOutput, BakeoffError } from './runner.mjs';
-import { openLedger, reserve, dispatch, markUnknown, reconcile,
+import { openLedger, reserve, dispatch, markUnknown, recordGeneration, reconcile,
   reconcileRejected, reservedMicro, snapshot } from './ledger.mjs';
 
 export const paidCandidates = Object.freeze({
@@ -119,6 +119,7 @@ export async function executePaid({ candidateKey, fixture, task, key, dbPath,
     let result;
     try { result = await response.json(); } catch { markUnknown(db, id, 'malformed_json'); throw new BakeoffError('malformed_json', 'Paid response lacks parseable generation evidence.'); }
     if (!result.id) { markUnknown(db, id, 'missing_generation_id'); throw new BakeoffError('missing_generation_id', 'Paid response cannot be reconciled.'); }
+    recordGeneration(db, id, result.id);
     let metadata;
     let afterUsage;
     try {

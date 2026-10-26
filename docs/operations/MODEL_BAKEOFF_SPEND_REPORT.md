@@ -1,6 +1,6 @@
 # M2A paid bake-off spend report
 
-Report status: pre-dispatch, 2026-10-26 UTC. The owner approved at most $1 aggregate paid exposure, with $0.60 per provider, $0.20 per exact model and upstream, $0.20 per synthetic brief, $0.02 per request and 40 paid requests. No paid completion request has been dispatched yet. Actual spend is $0; unresolved paid exposure is $0; remaining authorized aggregate exposure is $1. These values must be updated from the local ledger after each batch.
+Report status: stopped after one paid dispatch, 2026-10-26 UTC. The owner approved at most $1 aggregate paid exposure, with $0.60 per provider, $0.20 per exact model and upstream, $0.20 per synthetic brief, $0.02 per request and 40 paid requests. One OpenRouter Qwen compatibility request was dispatched. Actual charge is **unknown**, so actual spend must not be reported as $0. The durable ledger retains $0.000689 of unreconciled exposure. Its conservative remaining aggregate headroom is $0.999311, but further paid dispatch is blocked until the attempt is reconciled. No Together paid request was sent.
 
 ## Preflight evidence
 
@@ -15,9 +15,17 @@ Report status: pre-dispatch, 2026-10-26 UTC. The owner approved at most $1 aggre
 
 ## Provider eligibility
 
-OpenRouter has a documented generation-cost record and current-key usage counter. The first paid compatibility request remains conditional on all verification checks passing. Together paid testing is blocked because the available account-model endpoint does not provide an auditable balance movement and no supported charge record has been established. Do not substitute catalog rates for actual charges.
+OpenRouter has a documented generation-cost record and current-key usage counter. The first paid compatibility request passed catalog, credential, budget and CI preflight and was dispatched. Its subsequent metadata or key-usage read failed, so the runner marked it `billing_unavailable` and retained its reservation. The original implementation did not persist the generation ID before attempting those reads, which prevents generation-specific recovery for this attempt. The implementation has been corrected for future requests, but no future paid request is allowed while this attempt is unresolved. The owner may inspect the OpenRouter Activity page for the approximate request time and compare the charge with the reserved amount; this report does not infer a debit from catalog prices. Together paid testing is blocked because the available account-model endpoint does not provide an auditable balance movement and no supported charge record has been established.
 
-Local `pnpm verify` passed 26 application tests, 20 bake-off tests, five migrations, contract drift, secret scan, build and typography. A separate local Playwright attempt passed the 320-pixel and tablet checks but failed the desktop and mobile Studio journeys after slow local Worker startup and interaction. This is an unresolved preflight gate. No paid request was sent while it remained unresolved. A passing CI run on this commit is also pending.
+Local `pnpm verify` passed 26 application tests, 20 bake-off tests, five migrations, contract drift, secret scan, build and typography. A separate local Playwright attempt passed the 320-pixel and tablet checks but failed the desktop and mobile Studio journeys after slow local Worker startup and interaction. [GitHub Actions run 40393334860](https://github.com/luch91/Hacktor/actions/runs/40393334860) then passed all four responsive journeys and the same verification suite at commit `52e03df`. This cleared the pre-dispatch UI gate for the single attempt.
+
+## Dispatched attempt
+
+| Ledger ID | Provider and model | Brief | State | Reserved exposure | Verified charge |
+| --- | --- | --- | --- | ---: | ---: |
+| `48932bbc-00b3-4404-83a0-a908c9d1cb94` | OpenRouter `qwen/qwen3.5-flash-02-23`, Alibaba | `flood-water-offline` | Unknown, `billing_unavailable` | $0.000689 | Unknown |
+
+Dispatched requests: 1. Reconciled requests: 0. Spend by provider, model and brief: unknown for this one attempt. Unreconciled exposure by OpenRouter, Qwen3.5 Flash and the flood-water brief: $0.000689 each. No slate or card output from this request is accepted as evidence. The runner made zero automatic retries.
 
 ## Required after execution
 

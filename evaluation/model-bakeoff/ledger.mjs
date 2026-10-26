@@ -93,6 +93,13 @@ export function markUnknown(db, id, errorCode) {
   if (result.changes !== 1) throw new LedgerError('not_dispatched');
 }
 
+export function recordGeneration(db, id, generationId) {
+  if (typeof generationId !== 'string' || !generationId) throw new LedgerError('invalid_generation_id');
+  const result = db.prepare("UPDATE attempts SET generation_id=? WHERE id=? AND state='dispatched' AND generation_id IS NULL")
+    .run(generationId, id);
+  if (result.changes !== 1) throw new LedgerError('not_dispatched');
+}
+
 export function cancelUndispatched(db, id, errorCode) {
   const result = db.prepare("UPDATE attempts SET state='cancelled',error_code=?,reconciliation_status='not_billed' WHERE id=? AND state='reserved'").run(errorCode, id);
   if (result.changes !== 1) throw new LedgerError('cannot_cancel_dispatched');

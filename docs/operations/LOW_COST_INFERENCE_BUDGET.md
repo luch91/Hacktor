@@ -1,6 +1,6 @@
 # Low-cost M2A inference pilot budget
 
-Status: owner approved a maximum $1 paid inference pilot on 2026-10-26. Actual paid spend remains $0 as of this ledger preflight. Published prices were rechecked on 2026-10-26 UTC in the [candidate registry](../ai/MODEL_CANDIDATE_REGISTRY.md). They are estimates, not account debits. Promotional credits count as paid exposure.
+Status: owner approved a maximum $1 paid inference pilot on 2026-10-26. One Qwen compatibility request was dispatched; its actual charge is unknown, with $0.000689 reserved in the durable ledger. Further paid requests are stopped. Published prices were rechecked on 2026-10-26 UTC in the [candidate registry](../ai/MODEL_CANDIDATE_REGISTRY.md). They are estimates, not account debits. Promotional credits count as paid exposure. See the [spend report](MODEL_BAKEOFF_SPEND_REPORT.md).
 
 ## Proposed limits
 
