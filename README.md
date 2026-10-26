@@ -2,13 +2,13 @@
 
 [![CI](https://github.com/luch91/Hacktor/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/luch91/Hacktor/actions/workflows/ci.yml)
 
-Hacktor is a Deep Ideation Studio for builders who want differentiated, evidence-aware, build-ready hackathon concepts. Milestone M1 is implemented on the isolated `feat/m1-deep-ideation` branch for review.
+Hacktor is a Deep Ideation Studio for builders who want differentiated, evidence-aware, build-ready hackathon concepts. The owner accepted M1 for local engineering at `983b8410c1f8c4980790d7ea287c1294de0456e6`. PR #1 remains draft and unmerged. M2 has planning documents only.
 
 The CI badge reflects the real `CI` workflow on `main`. No deployment, coverage, release, or license badge is shown because those states do not yet exist or have not been verified.
 
 ## Current status
 
-- Milestone: M1 Core Deep Ideation Studio, pending gate review
+- Milestone: M1 Core Deep Ideation Studio, accepted for local engineering only
 - Runtime: responsive React Studio plus a same-origin Cloudflare Worker API
 - Data: private guest sessions, immutable idea lineage, stage checkpoints, jobs, evidence, scorecards, and blueprints in local D1
 - Async boundary: transactional outbox, Queue producer and consumer, bounded retry, idempotency, usage limits, and DLQ configuration
@@ -19,6 +19,8 @@ The CI badge reflects the real `CI` workflow on `main`. No deployment, coverage,
 - Live source access: not implemented
 
 The interface never presents deterministic output as live AI or hypotheses as verified research.
+
+M2 is proposed in the [implementation plan](docs/milestones/M2_IMPLEMENTATION_PLAN.md), [acceptance criteria](docs/milestones/M2_ACCEPTANCE_CRITERIA.md), [model evaluation plan](docs/ai/MODEL_EVALUATION_PLAN.md), [source integration plan](docs/research/SOURCE_INTEGRATION_PLAN.md), and [cost and risk plan](docs/operations/M2_COST_AND_RISK_PLAN.md). These documents do not authorize implementation or deployment.
 
 ## Product invariants
 

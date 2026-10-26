@@ -1,8 +1,10 @@
 # M1 gate report
 
-## Recommendation
+## Owner decision
 
-CONDITIONAL GO for review. Do not merge to `main` and do not begin M2.
+GO for local M1 engineering acceptance. The exact accepted code baseline is `983b8410c1f8c4980790d7ea287c1294de0456e6`, verified by [GitHub Actions run 40300587785](https://github.com/luch91/Hacktor/actions/runs/40300587785). The owner accepted the 26 tests, four responsive Playwright journeys, five migrations, contract checks, security checks, and final reliability regression evidence recorded below.
+
+This decision accepts the local implementation and authorizes M2 planning documents. It does not authorize merging PR #1, beginning M2 implementation, configuring or consuming paid model credentials, activating source connectors, provisioning Cloudflare resources, changing DNS or routes, or deploying staging or production. The accepted baseline remains identifiable even after these documentation updates. Production readiness and real-model creativity require separate evidence and owner decisions.
 
 ## Final reliability gate, 2026-10-26
 
