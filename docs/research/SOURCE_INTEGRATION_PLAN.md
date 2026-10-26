@@ -2,6 +2,14 @@
 
 Status: architecture and access proposal only. Every automated connector is disabled. No API key, external read, scraper, or production resource is authorized by this plan.
 
+This is the M2B workstream with its own approval and acceptance gate. M2A live inference and idea evaluation do not depend on activating these connectors.
+
+## Brabble source coverage and contract risk, checked 2026-10-26
+
+[Brabble's developer page](https://brabble.ai/developers) describes an index of open student competitions and hackathons, primarily in India, served from an hourly snapshot. The [API reference](https://brabble.ai/docs) exposes `GET /api/listings` with 12 city filter values: Delhi NCR, Indore, Hyderabad, Pune, Ahmedabad, Bhopal, Bengaluru, Mumbai, Chennai, Kolkata, Jaipur, and Lucknow. That city filter excludes online listings. An unfiltered feed may include online events or events on global platforms, but neither a worldwide geographic inventory nor historic project coverage can be inferred. The API returns open listings with future deadlines, so it is suitable for discovery leads, not a historical originality corpus. Organizer pages remain authoritative for rules and dates.
+
+The published pages disagree in ways that affect a client contract. The [API reference](https://brabble.ai/docs) says a key is required, invalid `limit` falls back to 50, `offset` is clamped at 10000, and 429 does not guarantee `Retry-After`. The [developer guide](https://brabble.ai/developers) says invalid `limit` returns 400, permits a larger `offset` ceiling, and describes retry headers. The [FAQ](https://brabble.ai/faq) says the JSON API needs no key. Treat these as unresolved documentation discrepancies. Before any authorized connector implementation, confirm the current machine-readable spec and terms with the provider, obtain an approved key if required, and run a bounded contract test in the approved environment. Record actual pagination, error, retry, attribution, coverage, and rate behavior. No live API request or connector activation was performed for this planning update.
+
 ## Permission gate for each source
 
 Before writing an active connector, record the source owner, authorized access method, current terms and license, allowed fields and reuse, attribution text, refresh cadence, rate and daily request ceilings, credential owner and storage, retention and deletion policy, expected coverage, and a kill switch. Record the approval date and reviewer in `source_connectors`. A public page is not permission for automated collection. If any item is unresolved, keep that connector disabled and mark its coverage unavailable.

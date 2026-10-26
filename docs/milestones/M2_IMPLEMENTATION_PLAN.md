@@ -2,6 +2,18 @@
 
 Status: proposal for owner approval. No M2 implementation, deployment, connector activation, or paid inference is authorized by this document.
 
+## Refined package boundaries and independent gates
+
+M2A covers live inference through the existing provider abstraction and blinded idea-quality evaluation. It has its own acceptance gate in [M2_ACCEPTANCE_CRITERIA.md](M2_ACCEPTANCE_CRITERIA.md). Research at this gate uses only builder-provided or otherwise authorized static material; automated connectors are unnecessary for M2A acceptance.
+
+M2B covers individually approved research sources, coverage-aware comparable-project assessment, attributed records, and version-bound research exports. It has a separate acceptance gate. M2A acceptance does not activate sources or authorize M2B. Both gates preserve the exact accepted M1 commit `983b8410c1f8c4980790d7ea287c1294de0456e6` as the regression baseline.
+
+The order below is a proposal after owner approval, with steps 1 to 3 assigned to M2A and steps 4 to 5 assigned to M2B. Step 6 applies separately at each package gate. The evaluation corpus target is 48 unseen briefs across at least eight domains, as specified in the revised evaluation plan.
+
+## Branch and merge recommendation
+
+Keep PR #1 draft and unmerged for this planning review. After separate owner approval to merge it, preserve the accepted M1 SHA with an immutable acceptance tag, record the merge SHA, and branch `feat/m2a-live-ideation` from the reviewed `main`. Give M2A its own draft PR and gate. Branch `feat/m2b-research` from a reviewed `main` baseline with its own PR, source approvals, and gate. If M2B depends on an M2A contract, merge that reviewed contract first or cherry-pick only its isolated commit and tests. Avoid stacking all M2B implementation on an unaccepted M2A branch. This paragraph recommends a strategy; it does not authorize a tag, branch, or merge now.
+
 ## Baseline and goal
 
 M1 was accepted for local engineering at `983b8410c1f8c4980790d7ea287c1294de0456e6`. Keep that SHA as the comparison baseline. PR #1 stays draft and unmerged until separately approved. M2 should make the Deep Ideation Studio capable of real, challenge-specific generation and evidence-aware comparison while preserving its eight stages, nine strategies, owner scope, immutable idea versions, two-parent combines, and no U+2014 enforcement.
@@ -36,12 +48,12 @@ Each model-backed stage needs its own versioned prompt, output schema, maximum t
 | Order | Work | Dependency and exit condition |
 | --- | --- | --- |
 | 0 | Freeze M1 baseline and approve M2 scope, model, privacy policy, and cost caps | Owner decision recorded; no runtime changes before this gate. |
-| 1 | Build prompt contracts and offline evaluation corpus | At least 24 unfamiliar briefs across several domains, hard-constraint cases, and blinded human rubric in [model evaluation plan](../ai/MODEL_EVALUATION_PLAN.md). |
+| 1 | Build prompt contracts and offline evaluation corpus for M2A | At least 48 unfamiliar briefs across eight domains, hard-constraint cases, and blinded human rubric in [model evaluation plan](../ai/MODEL_EVALUATION_PLAN.md). |
 | 2 | Implement live adapter and stage orchestration behind disabled feature flags | Mock endpoint, malformed response, timeout, 429, budget, retry, and no-fallback tests pass. Paid calls require a separate owner approval. |
-| 3 | Run a bounded, approved model evaluation | Paired generic baseline and Hacktor outputs are blind-reviewed. Publish raw counts, disagreements, cost, and failure cases. No creativity claim from wording alone. |
-| 4 | Implement one connector at a time, beginning with the least ambiguous approved access path | Per-source approval record, contract fixture, attribution and retention checks, rate controls, kill switch, and source-specific tests pass before activation. |
+| 3 | Run a bounded, separately approved M2A model evaluation and gate | Paired generic baseline and Hacktor outputs are blind-reviewed. Publish raw counts, uncertainty intervals, disagreements, cost, and failure cases. No creativity claim from wording alone. |
+| 4 | Begin M2B with one individually approved connector or authorized corpus | Per-source approval record, contract fixture, attribution and retention checks, rate controls, kill switch, and source-specific tests pass before activation. Brabble is not a required first connector. |
 | 5 | Implement evidence-aware comparison and blueprint updates | Exact source links, coverage states, version linkage, and unknowns survive retries and exports. |
-| 6 | Run full local and isolated staging gates, then request release review | Contract, security, migration, concurrency, accessibility, responsive UI, evaluation, source, and spend evidence meet [M2 acceptance criteria](M2_ACCEPTANCE_CRITERIA.md). Deployment remains a separate approval. |
+| 6 | Run each package's local and CI gate, then request its separate review | Contract, security, migration, concurrency, accessibility, responsive UI, and package-specific evidence meet [M2 acceptance criteria](M2_ACCEPTANCE_CRITERIA.md). Any staging resource or deployment remains a separate approval. |
 
 ## Test and failure strategy
 

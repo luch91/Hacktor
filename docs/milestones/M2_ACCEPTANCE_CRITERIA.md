@@ -2,6 +2,24 @@
 
 Status: proposed gate, subject to owner approval before M2 implementation. M1 local acceptance at `983b8410c1f8c4980790d7ea287c1294de0456e6` is the regression baseline. Passing this gate would support an M2 engineering review, not an automatic production release.
 
+## Independent package gates and proposed numeric thresholds
+
+M2A covers live inference and idea quality. M2B covers approved research intelligence. Each receives an independent review SHA, CI run, gate report, and owner decision. M2A does not require an active source connector. M2B does not inherit source permission from M2A. These thresholds require explicit owner approval before implementation or paid evaluation.
+
+The M2A sample is 48 unseen briefs across at least eight domains, with nine cards per slate, three blinded reviewers, and the same approved model for the Hacktor and generic arms. Count every assigned brief and failed attempt. At most one bounded retry is permitted per arm.
+
+| M2A measure | Proposed threshold | Counting rule |
+| --- | --- | --- |
+| First-attempt schema validity | At least 46 of 48 Hacktor first attempts yield a structurally valid nine-card slate with all nine strategies. | No manual repair or retry credit. |
+| Final failure rate | At most 2 of 48 Hacktor briefs lack a valid slate after the permitted retry. | Timeout, malformed output, missing strategy, and budget block count as failures. |
+| Hard constraints | Every accepted card carries every applicable hard-constraint ID; zero critical semantic violations among accepted cards; at least 99% of all generated cards pass blinded semantic review. | Invalid attempts remain in the denominator. |
+| Meaningful originality | At least 34 of 48 briefs contain at least three Hacktor cards rated 3 or 4 on problem originality by two of three reviewers and differentiated by problem, mechanism, and beneficiary. | Wording, title, or strategy label alone does not qualify. |
+| Paired quality | Mean Hacktor advantage of at least 0.5 point on each 0 to 4 scale for mechanism diversity and challenge relevance. | Each 95% brief-level bootstrap interval for paired mean difference has a lower bound above zero. |
+| Blinded preference | Hacktor wins at least 32 of 48 paired briefs; ties at most 8. | Three-reviewer majority per brief; 95% Wilson lower bound for Hacktor wins among all 48 exceeds 0.50. Failed Hacktor slates count as losses. |
+| Evidence honesty | Zero fabricated citations, unsupported originality percentages, or unlabeled deterministic fixtures. | Audit all evaluation claims and exports. |
+
+The M2B gate requires 100% of active connectors to have dated owner approval for access, terms, attribution, retention, rate ceiling, credentials, and kill switch. Every verified research claim must link to an accessible approved record and exact idea version; zero fabricated or dangling citations are allowed. Every displayed source-backed claim must carry required attribution and observation time. Every comparison must state platform, geography, time range, query count, unavailable sources, and failures. All tested 401, 403, 429, timeout, schema drift, takedown, and partial-coverage cases must stop or degrade to an explicitly labeled state without promoting claims to verified. Brabble is discovery-only and is not mandatory for the M2B gate.
+
 ## Entry conditions
 
 - Owner approves M2 scope, evaluation rubric and thresholds, provider choice, prompt-data policy, and maximum spending.
@@ -24,9 +42,9 @@ Status: proposed gate, subject to owner approval before M2 implementation. M1 lo
 
 ## Proposed quality evaluation gate
 
-Use at least 24 previously unseen briefs from at least six domains, including short, ambiguous, and technically constrained briefs. Compare Hacktor and a generic LLM baseline under the same input information and predeclared budget. At least three blinded reviewers score each paired slate with the rubric in [MODEL_EVALUATION_PLAN.md](../ai/MODEL_EVALUATION_PLAN.md). Publish the full distribution, not only an average.
+Use at least 48 previously unseen briefs from at least eight domains, including short, ambiguous, and technically constrained briefs. Compare Hacktor and a generic LLM baseline under the same input information and predeclared budget. At least three blinded reviewers score each paired slate with the rubric in [MODEL_EVALUATION_PLAN.md](../ai/MODEL_EVALUATION_PLAN.md). Publish the full distribution, not only an average.
 
-Before execution, the owner must approve numeric thresholds. The proposed starting thresholds are: zero critical hard-constraint violations among accepted cards; zero fabricated sources or originality percentages; at least 90% valid nine-card slates before any manual repair; and a positive paired human preference for Hacktor on mechanism diversity and challenge relevance with a reported uncertainty interval. If the interval includes no advantage, the quality claim is not accepted even if examples look polished.
+Before execution, the owner must approve the numeric M2A thresholds above. If either paired interval includes no advantage, the quality claim is not accepted even if examples look polished.
 
 These are proposed gates, not results or promises. The evaluation must report reviewer disagreement, exclusions, all failed model attempts, provider latency, and actual token and dollar usage. It must not treat title or wording differences as evidence of originality.
 
