@@ -4,6 +4,8 @@ Status: proposal only. No paid credential, spend budget, deployment, or source a
 
 M2A covers live inference and blinded idea evaluation. M2B covers individually approved research sources. Their spending and acceptance gates are independent.
 
+The [M2A owner decision sheet](M2A_PROVIDER_AND_BUDGET_DECISIONS.md) proposes explicit stage, job, daily, campaign and project ceilings using the four verified model options below. These are requests for approval, not authorized spend. The accepted [M2B feasibility record](../gates/M2B_PLANNING_ACCEPTANCE.md) provides source priorities but no licensed corpus or known licensing fee. Budget each future connector separately for API calls, storage, human verification, retention, deletion and attribution; unknown fees stay unknown.
+
 ## Model/provider options and evaluation worksheet, checked 2026-10-26
 
 These are published standard text-token rates in USD per million tokens, verified on the linked provider pages on the check date. They are options, not a provider selection or credential approval. Recheck model availability, exact API identifier, structured-output support, privacy terms, and rates before authorizing a call. The estimate excludes cache discounts, Batch or Flex discounts, tool or grounding fees, taxes, hosting, and exchange costs. Output caps must include billed reasoning tokens where applicable.

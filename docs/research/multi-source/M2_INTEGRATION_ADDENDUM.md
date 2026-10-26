@@ -1,10 +1,10 @@
 # M2 integration addendum for owner review
 
-Status: independent recommendations from worktree `docs/m2-multi-source-intelligence`. Do not copy these into the five M2 planning documents until the concurrent planning task is complete and the owner approves reconciliation. No runtime code, migration, connector, credential, paid call, Cloudflare resource, or deployment is included.
+Status: accepted M2B feasibility recommendations from commit `2b488bfec942cc4162fa70f992b91842b36f4e92`. The previously concurrent M2 planning refinement is complete. The 2026-10-26 owner handoff authorizes consolidation into the five main planning documents on a separate documentation branch. No runtime code, migration, connector, credential, paid call, Cloudflare resource, or deployment is included.
 
 ## Exact proposed changes to the five M2 plans
 
-| Existing document | Proposed edit after reconciliation |
+| Existing document | Approved planning consolidation |
 | --- | --- |
 | `docs/milestones/M2_IMPLEMENTATION_PLAN.md` | Make the four source intelligence layers explicit within M2B. Add a first-class historical-project corpus and licensed event-to-project evidence links. Replace any implied Brabble-first ordering with source-by-source permission and role-based sequencing. Keep M2A independent of source activation. |
 | `docs/milestones/M2_ACCEPTANCE_CRITERIA.md` | Add M2B evidence for source permission compliance, official-brief provenance, project-event link precision, deduplication, freshness, query coverage, valid citations, and unsupported-claim rate. Require every source claim to cite an approved snapshot and exact idea version. No global novelty percentage. |
@@ -14,10 +14,10 @@ Status: independent recommendations from worktree `docs/m2-multi-source-intellig
 
 The 2026-10-26 bounded findings in [ACCESS_PROBE_RESULTS.md](ACCESS_PROBE_RESULTS.md) and [HACKLIST_MCP_POC.md](HACKLIST_MCP_POC.md) sharpen the proposed edits: HackList's public feed and community MCP work, but data rights and official ownership remain pending; Brabble's RSS works and its published terms permit limited attributed commercial row reuse, while its keyed API returned 401 without a key; Devpost returned 403 and its published terms bar crawling; Devfolio, ETHGlobal and lablab.ai exposed representative public historical projects, but commercial corpus rights remain pending. The main plans should carry two independent access and authorization statuses, not one restricted/available label. The [phase closure](M2B_PHASE_CLOSURE.md) lists the source-specific owner decisions.
 
-## Decisions that may conflict with current planning
+## Reconciled planning decisions and remaining owner choices
 
-1. The current M2 implementation order speaks of beginning connector work with the least ambiguous approved access path. This addendum recommends choosing the first pilot by both permission and historical intelligence value, preferably an organizer-authorized event and project export. Brabble is useful for discovery but does not satisfy historical originality needs. The owner should select the pilot after seeing permission and sample quality.
-2. The existing source plan names Brabble, GitHub, organizer briefs, lablab.ai and ETHGlobal, while this assessment adds nine other ecosystems. Adding names to the plan does not authorize access or expand M2B implementation scope. The owner must decide whether to approve a narrow first wave and leave the rest as a research backlog.
+1. The main M2 plan now names the four-layer source architecture. The first future pilot should be chosen by both permission and historical intelligence value, preferably an organizer-authorized event and project export. Brabble is useful for discovery but does not satisfy historical originality needs. The owner still chooses any actual pilot after reviewing permission and sample quality.
+2. The main source plan now links the twelve-platform probe and two-axis permission register. Adding source names does not authorize access or expand M2B implementation scope. The owner must decide whether to approve a narrow first wave and leave the rest as a research backlog.
 3. The current `public_projects` schema allows one source record and one event per row. This addendum proposes separate versioned observations and many-to-many project-event links. This requires contract and migration review after M2B approval; no M1 schema or contract is changed here.
 4. The current gate calls for 100% provenance of verified claims. That remains appropriate, but source coverage itself has no global denominator. The owner should approve scoped pilot coverage targets only after obtaining an organizer roster or licensed corpus manifest.
 

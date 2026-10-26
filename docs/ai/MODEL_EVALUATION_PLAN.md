@@ -4,6 +4,8 @@ Status: proposal. No paid model call is authorized. This plan evaluates idea qua
 
 This is the M2A evaluation only. M2B research coverage has a separate gate. The numeric thresholds proposed for owner approval are in [M2_ACCEPTANCE_CRITERIA.md](../milestones/M2_ACCEPTANCE_CRITERIA.md); they are not observed results.
 
+The [M2A evaluation readiness sheet](M2A_EVALUATION_READINESS.md) defines invalid-output scoring, semantic-review denominators, reviewer instructions and the frozen analysis manifest. The accepted [M2B feasibility corpus assessment](../gates/M2B_PLANNING_ACCEPTANCE.md) is not a licensed evaluation corpus. Do not include its public sample fixtures as real-model evaluation evidence or infer global originality from them.
+
 ## Questions and comparison
 
 Primary question: does Hacktor's eight-stage, nine-strategy process produce more useful and substantively diverse hackathon concepts than a generic LLM request given the same brief, constraints, and time or token budget? Secondary questions cover constraint compliance, feasibility, judging fit, demonstrability, uncertainty disclosure, latency, failure rate, and cost.

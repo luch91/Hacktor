@@ -6,7 +6,11 @@ Status: proposed gate, subject to owner approval before M2 implementation. M1 lo
 
 M2A covers live inference and idea quality. M2B covers approved research intelligence. Each receives an independent review SHA, CI run, gate report, and owner decision. M2A does not require an active source connector. M2B does not inherit source permission from M2A. These thresholds require explicit owner approval before implementation or paid evaluation.
 
+The accepted [M2B feasibility closure](../gates/M2B_PLANNING_ACCEPTANCE.md) is a planning gate only. It does not satisfy the M2B connector gate below. Future M2B evidence must separate technical reachability from permission for commercial storage, transformation, comparison and display. Organizer-confirmed snapshots are required for verified rules; a working HackList or Brabble listing does not qualify. Historical comparisons need approved project records and coverage manifests, with GitHub links treated as implementation evidence only.
+
 The M2A sample is 48 unseen briefs across at least eight domains, with nine cards per slate, three blinded reviewers, and the same approved model for the Hacktor and generic arms. Count every assigned brief and failed attempt. At most one bounded retry is permitted per arm.
+
+The [evaluation readiness audit](../ai/M2A_EVALUATION_READINESS.md) fixes the denominator and reviewer rules before results are seen. The thresholds in this file remain proposed until the owner approves them. M2A requires no automated source connector.
 
 | M2A measure | Proposed threshold | Counting rule |
 | --- | --- | --- |
@@ -18,7 +22,7 @@ The M2A sample is 48 unseen briefs across at least eight domains, with nine card
 | Blinded preference | Hacktor wins at least 32 of 48 paired briefs; ties at most 8. | Three-reviewer majority per brief; 95% Wilson lower bound for Hacktor wins among all 48 exceeds 0.50. Failed Hacktor slates count as losses. |
 | Evidence honesty | Zero fabricated citations, unsupported originality percentages, or unlabeled deterministic fixtures. | Audit all evaluation claims and exports. |
 
-The M2B gate requires 100% of active connectors to have dated owner approval for access, terms, attribution, retention, rate ceiling, credentials, and kill switch. Every verified research claim must link to an accessible approved record and exact idea version; zero fabricated or dangling citations are allowed. Every displayed source-backed claim must carry required attribution and observation time. Every comparison must state platform, geography, time range, query count, unavailable sources, and failures. All tested 401, 403, 429, timeout, schema drift, takedown, and partial-coverage cases must stop or degrade to an explicitly labeled state without promoting claims to verified. Brabble is discovery-only and is not mandatory for the M2B gate.
+The future M2B implementation gate cannot pass with zero approved source records. Its pilot must include at least one organizer-confirmed brief and one authorized event-linked historical-project sample; a discovery connector is valuable but not a substitute for historical intelligence. Every active connector needs dated owner approval for access, terms, attribution, retention, rate ceiling, credentials, and kill switch. Every verified research claim must link to an accessible approved record and exact idea version; zero fabricated or dangling citations are allowed. Every displayed source-backed claim must carry required attribution and observation time. Every comparison must state platform, geography, time range, query count, unavailable sources, and failures. All tested 401, 403, 429, timeout, schema drift, takedown, and partial-coverage cases must stop or degrade to an explicitly labeled state without promoting claims to verified. Brabble and HackList are discovery-only and neither is mandatory for the M2B gate.
 
 ## Entry conditions
 

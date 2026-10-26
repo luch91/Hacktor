@@ -8,6 +8,8 @@ M2A covers live inference through the existing provider abstraction and blinded 
 
 M2B covers individually approved research sources, coverage-aware comparable-project assessment, attributed records, and version-bound research exports. It has a separate acceptance gate. M2A acceptance does not activate sources or authorize M2B. Both gates preserve the exact accepted M1 commit `983b8410c1f8c4980790d7ea287c1294de0456e6` as the regression baseline.
 
+The accepted [M2B feasibility record](../gates/M2B_PLANNING_ACCEPTANCE.md) closes source discovery planning at `2b488bfec942cc4162fa70f992b91842b36f4e92`. M2B implementation, corpus acquisition and source activation remain unauthorized. The next proposed engineering package is [M2A execution](M2A_EXECUTION_SPEC.md), with its [build sequence](M2A_BUILD_SEQUENCE.md) and a separate owner authorization gate.
+
 The order below is a proposal after owner approval, with steps 1 to 3 assigned to M2A and steps 4 to 5 assigned to M2B. Step 6 applies separately at each package gate. The evaluation corpus target is 48 unseen briefs across at least eight domains, as specified in the revised evaluation plan.
 
 ## Branch and merge recommendation
@@ -27,6 +29,8 @@ The M1 deterministic slate remains an explicitly labeled test adapter. It must n
 3. Persist stage input and output hashes, model and prompt versions, token usage, estimated and settled cost, validation result, and error code with each run. Do not persist raw secrets or unrestricted private prompts in logs. Keep Queue delivery idempotent and lease-fenced. A live request with an uncertain external outcome stops for review instead of silently repeating a potentially billable call.
 4. Add a source adapter boundary that maps approved external records into `source_connectors`, `source_records`, and event snapshots. Each record keeps source URL, publisher, fetch time, observed publication time when available, license or access basis, attribution text, content hash, and coverage limits. Research claims reference exact records and exact idea versions.
 5. Build an originality assessment from explicit comparable-project observations. Candidate retrieval, match explanation, evidence coverage, and assessor judgment are separate fields. Display observed similarities and unknowns. Do not compute or display an originality percentage without a validated measurement method and separate approval.
+
+M2B has four distinct layers: organizer-verified challenge snapshots, independent multi-platform event discovery, historical-project records, and coverage-aware originality comparison. The [source architecture](../research/multi-source/MULTI_SOURCE_ARCHITECTURE.md) and [permission register](../research/multi-source/SOURCE_PERMISSION_REGISTER.md) require separate technical-access and commercial-use decisions. HackList and Brabble are discovery candidates, while Devfolio, ETHGlobal, and lablab.ai are high-value historical-project candidates subject to rights approval. GitHub repository evidence cannot independently establish submission or award status. No source is a prerequisite for M2A's live-model quality evaluation.
 
 ### Stage contracts to design
 
