@@ -200,8 +200,13 @@ function selectChallengeProfile(context: SessionContext): ChallengeProfile {
 }
 
 export function generateDeterministicTestSlate(context: SessionContext): IdeaCardV1[] {
-  const profile = selectChallengeProfile(context);
-  const topic = clip(context.summary || profile.subject, 150);
+  const baseProfile = selectChallengeProfile(context);
+  const topic = clip(context.summary || baseProfile.subject, 110);
+  const profile: ChallengeProfile = {
+    ...baseProfile,
+    subject: `${baseProfile.subject} for this challenge: ${topic}`,
+    workflow: `${baseProfile.workflow} in the challenge: ${topic}`,
+  };
   const beneficiaries = Array.from(new Set([...context.beneficiaries, ...profile.default_beneficiaries]));
   const requirements = context.hard_constraints.map((constraint) => constraint.text);
   const requirement = clip(requirements.join('; ') || `the stated ${profile.scarce_resource} limits`, 240);

@@ -1,0 +1,134 @@
+[
+  {
+    "brief": "Reduce flood risk for coastal residents",
+    "mode": "deterministic_test_adapter",
+    "hard_constraints": [
+      {
+        "id": "offline",
+        "text": "Must work offline"
+      }
+    ],
+    "ideas": [
+      {
+        "strategy": "neglected_actor",
+        "problem": "In local hazard preparation and response for this challenge: Reduce flood risk for coastal residents, frontline observations are invisible until the primary participant is already blocked.",
+        "mechanism": "A handoff ledger turns a local risk report or missed readiness task into ranked interventions for preparedness check and neighborhood response handoff in the challenge: Reduce flood risk for coastal residents, while respecting Must work offline.",
+        "beneficiary": "neighborhood coordinators"
+      },
+      {
+        "strategy": "constraint_inversion",
+        "problem": "climate resilience tools treat connectivity, response time, and trusted local knowledge as degraded conditions instead of design inputs.",
+        "mechanism": "A constraint compiler converts Must work offline into product rules, offline fallbacks, and acceptance tests.",
+        "beneficiary": "coastal residents"
+      },
+      {
+        "strategy": "cross_domain_transfer",
+        "problem": "preparedness check and neighborhood response handoff in the challenge: Reduce flood risk for coastal residents lacks the explicit roles and escalation rules used in safety-critical operations.",
+        "mechanism": "Transfer incident-command checkpoints into preparedness check and neighborhood response handoff in the challenge: Reduce flood risk for coastal residents, implemented within Must work offline.",
+        "beneficiary": "neighborhood coordinators"
+      },
+      {
+        "strategy": "negative_space",
+        "problem": "climate resilience products optimize visible tasks but leave one transition in preparedness check and neighborhood response handoff in the challenge: Reduce flood risk for coastal residents unsupported.",
+        "mechanism": "A transition detector finds stalled preparedness check and neighborhood response handoff in the challenge: Reduce flood risk for coastal residents journeys and offers one bridge action compatible with Must work offline.",
+        "beneficiary": "coastal residents"
+      },
+      {
+        "strategy": "second_order",
+        "problem": "A successful preparedness check and neighborhood response handoff in the challenge: Reduce flood risk for coastal residents decision can shift delay, cost, or risk onto an unseen downstream participant.",
+        "mechanism": "An impact graph previews who absorbs the consequences of a local risk report or missed readiness task and selects an intervention under Must work offline.",
+        "beneficiary": "residents in exposed areas"
+      },
+      {
+        "strategy": "failure_first",
+        "problem": "climate resilience teams polish the happy path before testing the failure that could invalidate turn one neighborhood risk report into a verified offline response plan.",
+        "mechanism": "A failure simulator turns the riskiest assumption in preparedness check and neighborhood response handoff in the challenge: Reduce flood risk for coastal residents into a rehearsal constrained by Must work offline.",
+        "beneficiary": "neighborhood coordinators"
+      },
+      {
+        "strategy": "counterfactual",
+        "problem": "climate resilience approaches collapse when one assumed intermediary or trusted dataset disappears.",
+        "mechanism": "A counterfactual planner removes that dependency from preparedness check and neighborhood response handoff in the challenge: Reduce flood risk for coastal residents and builds a peer-verifiable path under Must work offline.",
+        "beneficiary": "coastal residents"
+      },
+      {
+        "strategy": "low_resource",
+        "problem": "Cloud-heavy climate resilience experiences exclude people facing scarcity in connectivity, response time, and trusted local knowledge.",
+        "mechanism": "A compact task packet supports preparedness check and neighborhood response handoff in the challenge: Reduce flood risk for coastal residents locally and syncs only minimum proofs, honoring Must work offline.",
+        "beneficiary": "coastal residents"
+      },
+      {
+        "strategy": "institutional_bottleneck",
+        "problem": "preparedness check and neighborhood response handoff in the challenge: Reduce flood risk for coastal residents stalls because nobody can see which decision, evidence item, or owner blocks progress.",
+        "mechanism": "A privacy-aware decision trace exposes the next accountable checkpoint in climate resilience without violating Must work offline.",
+        "beneficiary": "residents in exposed areas"
+      }
+    ]
+  },
+  {
+    "brief": "Improve medication safety for hospital patients",
+    "mode": "deterministic_test_adapter",
+    "hard_constraints": [
+      {
+        "id": "privacy",
+        "text": "No patient identifiers may leave the device"
+      }
+    ],
+    "ideas": [
+      {
+        "strategy": "neglected_actor",
+        "problem": "In continuity of care outside a clinical visit for this challenge: Improve medication safety for hospital patients, frontline observations are invisible until the primary participant is already blocked.",
+        "mechanism": "A handoff ledger turns a missed follow-up or ambiguous symptom report into ranked interventions for care instruction, follow-up, and escalation handoff in the challenge: Improve medication safety for hospital patients, while respecting No patient identifiers may leave the device.",
+        "beneficiary": "patients managing care at home"
+      },
+      {
+        "strategy": "constraint_inversion",
+        "problem": "community health tools treat clinical attention, patient trust, and reliable follow-up as degraded conditions instead of design inputs.",
+        "mechanism": "A constraint compiler converts No patient identifiers may leave the device into product rules, offline fallbacks, and acceptance tests.",
+        "beneficiary": "nurses"
+      },
+      {
+        "strategy": "cross_domain_transfer",
+        "problem": "care instruction, follow-up, and escalation handoff in the challenge: Improve medication safety for hospital patients lacks the explicit roles and escalation rules used in safety-critical operations.",
+        "mechanism": "Transfer incident-command checkpoints into care instruction, follow-up, and escalation handoff in the challenge: Improve medication safety for hospital patients, implemented within No patient identifiers may leave the device.",
+        "beneficiary": "patients managing care at home"
+      },
+      {
+        "strategy": "negative_space",
+        "problem": "community health products optimize visible tasks but leave one transition in care instruction, follow-up, and escalation handoff in the challenge: Improve medication safety for hospital patients unsupported.",
+        "mechanism": "A transition detector finds stalled care instruction, follow-up, and escalation handoff in the challenge: Improve medication safety for hospital patients journeys and offers one bridge action compatible with No patient identifiers may leave the device.",
+        "beneficiary": "nurses"
+      },
+      {
+        "strategy": "second_order",
+        "problem": "A successful care instruction, follow-up, and escalation handoff in the challenge: Improve medication safety for hospital patients decision can shift delay, cost, or risk onto an unseen downstream participant.",
+        "mechanism": "An impact graph previews who absorbs the consequences of a missed follow-up or ambiguous symptom report and selects an intervention under No patient identifiers may leave the device.",
+        "beneficiary": "community health workers"
+      },
+      {
+        "strategy": "failure_first",
+        "problem": "community health teams polish the happy path before testing the failure that could invalidate route one patient follow-up to the right safe next step without diagnosing.",
+        "mechanism": "A failure simulator turns the riskiest assumption in care instruction, follow-up, and escalation handoff in the challenge: Improve medication safety for hospital patients into a rehearsal constrained by No patient identifiers may leave the device.",
+        "beneficiary": "patients managing care at home"
+      },
+      {
+        "strategy": "counterfactual",
+        "problem": "community health approaches collapse when one assumed intermediary or trusted dataset disappears.",
+        "mechanism": "A counterfactual planner removes that dependency from care instruction, follow-up, and escalation handoff in the challenge: Improve medication safety for hospital patients and builds a peer-verifiable path under No patient identifiers may leave the device.",
+        "beneficiary": "nurses"
+      },
+      {
+        "strategy": "low_resource",
+        "problem": "Cloud-heavy community health experiences exclude people facing scarcity in clinical attention, patient trust, and reliable follow-up.",
+        "mechanism": "A compact task packet supports care instruction, follow-up, and escalation handoff in the challenge: Improve medication safety for hospital patients locally and syncs only minimum proofs, honoring No patient identifiers may leave the device.",
+        "beneficiary": "nurses"
+      },
+      {
+        "strategy": "institutional_bottleneck",
+        "problem": "care instruction, follow-up, and escalation handoff in the challenge: Improve medication safety for hospital patients stalls because nobody can see which decision, evidence item, or owner blocks progress.",
+        "mechanism": "A privacy-aware decision trace exposes the next accountable checkpoint in community health without violating No patient identifiers may leave the device.",
+        "beneficiary": "community health workers"
+      }
+    ]
+  }
+]

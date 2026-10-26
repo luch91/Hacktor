@@ -16,10 +16,13 @@ Jobs now use an atomic claim with a lease token, checkpoint stages in transactio
 | --- | --- |
 | `pnpm verify` | PASS, exit code 0. Formatting, lint, strict TypeScript, 19 tests in 7 files, 4 forward migrations, contract drift, secret scan, builds, and no U+2014 check passed. |
 | Challenge briefs | PASS, three unrelated brief regressions; each slate has nine distinct problems and mechanisms and at least three beneficiaries. |
+| Two recorded slates | PASS, [climate and medication safety deterministic slates](../evidence/m1-differentiated-slates.json) include all nine strategies and their actual problem, mechanism, and beneficiary text. These are local test output. |
 | Queue recovery | PASS, tests cover competing claims, expired lease reclaim, duplicate delivery, and interruption before transactional card persistence. |
 | Mock live provider | PASS, three recorded JSON provider stage runs and three usage reservations; no paid provider call. |
 | Missing live authorization | PASS, job enters `blocked_quota` with zero persisted ideas. |
 | Fresh local browser journeys | PASS, 4 Playwright tests across desktop, 390px mobile, 320px mobile, and 768px tablet using a newly built Worker and migrated local D1. The first run reused an old server and failed; the fresh-server rerun passed. |
+| Clean clone | PASS, `pnpm install --frozen-lockfile` installed 86 packages from the committed lockfile; `pnpm verify` passed from the fresh clone of `75ca4e0`. |
+| GitHub Actions | PASS for `75ca4e0fb227393e198ea7e1335a69628114299a`, including locked install, verification, Chromium setup, and responsive journeys. [Run 40295547550](https://github.com/luch91/Hacktor/actions/runs/40295547550). |
 
 The current integration tests do not prove behavior against remote Cloudflare D1 or a paid model. A live invocation interrupted after its budget reservation is deliberately stopped for manual review because its external outcome cannot be inferred safely. The action lease path still needs a stronger transactional fence against a slow writer that resumes after its lease expires. These are remaining reliability blockers for an unconditional GO.
 
