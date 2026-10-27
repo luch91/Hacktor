@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
 const expected = {
-  'api/openapi.yaml': '2fd394530368845f3958d15f9bac68c0b58f0e2c4c2295b08fe8cffa3aa1480f',
+  'api/openapi.yaml': '006a6d284343c2844f78170df36d530c2c7c6917cbc08995907339b47963f3fc',
   'database/migrations/0001_init.sql':
     '28775088fe886bb7183c7424dc56fc0a54ece4be447a4f301b12bfd5cbb9d200',
   'schemas/idea-card.v1.schema.json':

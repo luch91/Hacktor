@@ -30,6 +30,7 @@ def execute() -> None:
             "session_stage_runs",
             "idea_pins",
             "action_idempotency_keys",
+            "session_context_drafts",
         }
         assert required.issubset(tables), f"Missing required tables: {required - tables}"
 
@@ -69,11 +70,19 @@ def execute() -> None:
             "VALUES (?, ?, ?, ?)",
             ("idea-1", "session-1", "{}", "1.0"),
         )
+        connection.execute(
+            "INSERT INTO session_context_drafts(session_id, context_json, base_context_revision) VALUES (?, ?, ?)",
+            ("session-1", "{}", 1),
+        )
         connection.execute("DELETE FROM ideation_sessions WHERE id = ?", ("session-1",))
         remaining = connection.execute(
             "SELECT COUNT(*) FROM idea_versions WHERE id = ?", ("idea-1",)
         ).fetchone()[0]
         assert remaining == 0, "Cascade deletion did not remove idea versions"
+        draft_remaining = connection.execute(
+            "SELECT COUNT(*) FROM session_context_drafts WHERE session_id = ?", ("session-1",)
+        ).fetchone()[0]
+        assert draft_remaining == 0, "Cascade deletion did not remove context drafts"
 
         fts = connection.execute(
             "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'public_event_search'"

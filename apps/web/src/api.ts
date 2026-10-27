@@ -4,6 +4,9 @@ import {
   type IdeaCardV1,
   type JobQueueMessage,
   type SessionContext,
+  type SessionContextDraft,
+  type BlueprintSummary,
+  validateSessionContext,
   validateIdeaCard,
 } from '@hacktor/contracts';
 import {
@@ -57,6 +60,31 @@ interface IdeaRow {
   schema_version: string;
   visibility: string;
   created_at: string;
+}
+
+interface DraftRow {
+  session_id: string;
+  context_json: string;
+  base_context_revision: number;
+  draft_revision: number;
+  updated_at: string;
+}
+
+type BlueprintRow = Omit<BlueprintSummary, 'review_required'> & { review_required: number };
+
+function draftData(row: DraftRow): SessionContextDraft {
+  return { session_id: row.session_id, context: JSON.parse(row.context_json) as SessionContext,
+    base_context_revision: row.base_context_revision, draft_revision: row.draft_revision, updated_at: row.updated_at };
+}
+
+function parseDraftRevision(request: Request): number {
+  const value = request.headers.get('if-match')?.replaceAll('"', '');
+  if (!value || !/^(0|[1-9][0-9]*)$/.test(value)) throw new ApiFailure(428, 'draft_revision_required', 'Send the current draft revision in If-Match. Use 0 for a new draft.');
+  return Number(value);
+}
+
+function requireActiveSession(session: SessionRow): void {
+  if (session.status !== 'active') throw new ApiFailure(404, 'session_not_found', 'Session not found.');
 }
 
 function normalizeText(value: string): string {
@@ -165,7 +193,7 @@ async function ownedSession(db: D1Database, owner: Owner, sessionId: string): Pr
     )
     .bind(sessionId, owner.guest_id)
     .first<SessionRow>();
-  if (!row) throw new ApiFailure(404, 'session_not_found', 'Session not found.');
+  if (!row || row.status !== 'active') throw new ApiFailure(404, 'session_not_found', 'Session not found.');
   return row;
 }
 
@@ -174,7 +202,7 @@ async function ownedIdea(db: D1Database, owner: Owner, ideaId: string): Promise<
     .prepare(
       `SELECT i.id,i.session_id,i.card_json,i.strategy,i.schema_version,i.visibility,i.created_at
        FROM idea_versions i JOIN ideation_sessions s ON s.id = i.session_id
-       WHERE i.id = ? AND s.guest_id = ?`,
+       WHERE i.id = ? AND s.guest_id = ? AND s.status = 'active'`,
     )
     .bind(ideaId, owner.guest_id)
     .first<IdeaRow>();
@@ -524,7 +552,7 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
     }
     if (request.method === 'POST' && path === '/api/v1/sessions') return createGuestSession(request, env);
 
-    if (!/^\/api\/v1\/(sessions\/[^/]+(?:\/(?:context|jobs|ideas))?|jobs\/[^/]+|ideas\/[^/]+\/(?:actions|evidence|validation|blueprints)|blueprints\/[^/]+\/export\.md)$/.test(path)) {
+    if (!/^\/api\/v1\/(sessions\/[^/]+(?:\/(?:context|draft|jobs|ideas|blueprints|opportunities))?|jobs\/[^/]+|ideas\/[^/]+\/(?:actions|evidence|validation|blueprints)|blueprints\/[^/]+(?:\/export\.md)?)$/.test(path)) {
       throw new ApiFailure(404, 'not_found', 'API route not found.');
     }
 
@@ -541,6 +569,49 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
       await env.DB.prepare("UPDATE ideation_sessions SET status = 'deleting',updated_at = datetime('now') WHERE id = ?").bind(session.id).run();
       return json({ session_id: session.id, status: 'deleting' }, 202);
     }
+    const draftMatch = path.match(/^\/api\/v1\/sessions\/([^/]+)\/draft$/);
+    if (draftMatch?.[1]) {
+      const session = await ownedSession(env.DB, owner, draftMatch[1]);
+      requireActiveSession(session);
+      if (request.method === 'GET') {
+        const row = await env.DB.prepare('SELECT session_id,context_json,base_context_revision,draft_revision,updated_at FROM session_context_drafts WHERE session_id = ?')
+          .bind(session.id).first<DraftRow>();
+        return json({ draft: row ? draftData(row) : null, context_revision: session.context_revision });
+      }
+      if (request.method === 'PUT') {
+        const expected = parseDraftRevision(request);
+        const body = await readBody(request);
+        if (new TextEncoder().encode(JSON.stringify(body)).length > MAX_BODY_BYTES) throw new ApiFailure(413, 'body_too_large', 'Draft exceeds 50 KB.');
+        if (!validateSessionContext(body.context) || body.context.confirmed) throw new ApiFailure(422, 'invalid_draft', 'A complete unconfirmed context is required.');
+        if (!Number.isInteger(body.base_context_revision) || body.base_context_revision !== session.context_revision || session.review_required !== 1) {
+          throw new ApiFailure(409, 'draft_base_conflict', 'The confirmed context changed. Reload the workspace before saving.');
+        }
+        const serialized = normalizeText(JSON.stringify(body.context));
+        const row = expected === 0
+          ? await env.DB.prepare(
+            `INSERT OR IGNORE INTO session_context_drafts (session_id,context_json,base_context_revision)
+             SELECT id,?,context_revision FROM ideation_sessions
+             WHERE id = ? AND guest_id = ? AND status = 'active' AND review_required = 1 AND context_revision = ?
+             RETURNING session_id,context_json,base_context_revision,draft_revision,updated_at`,
+          ).bind(serialized, session.id, owner.guest_id, session.context_revision).first<DraftRow>()
+          : await env.DB.prepare(
+            `UPDATE session_context_drafts SET context_json = ?,draft_revision = draft_revision + 1,updated_at = datetime('now')
+             WHERE session_id = ? AND draft_revision = ? AND base_context_revision = ?
+               AND EXISTS (SELECT 1 FROM ideation_sessions WHERE id = ? AND guest_id = ? AND status = 'active'
+                 AND review_required = 1 AND context_revision = ?)
+             RETURNING session_id,context_json,base_context_revision,draft_revision,updated_at`,
+          ).bind(serialized, session.id, expected, session.context_revision, session.id, owner.guest_id, session.context_revision).first<DraftRow>();
+        if (!row) throw new ApiFailure(409, 'draft_revision_conflict', 'A newer draft exists. Review it before replacing saved work.');
+        return json({ draft: draftData(row) });
+      }
+      if (request.method === 'DELETE') {
+        const expected = parseDraftRevision(request);
+        const deleted = await env.DB.prepare('DELETE FROM session_context_drafts WHERE session_id = ? AND draft_revision = ? RETURNING session_id')
+          .bind(session.id, expected).first<{ session_id: string }>();
+        if (!deleted) throw new ApiFailure(409, 'draft_revision_conflict', 'The draft changed. Reload before discarding it.');
+        return json({ session_id: session.id, deleted: true });
+      }
+    }
     const contextMatch = path.match(/^\/api\/v1\/sessions\/([^/]+)\/context$/);
     if (contextMatch?.[1] && request.method === 'PATCH') {
       const session = await ownedSession(env.DB, owner, contextMatch[1]);
@@ -548,15 +619,59 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
       if (expected !== String(session.context_revision)) throw new ApiFailure(409, 'revision_conflict', 'The session context changed. Reload and review it again.');
       const body = await readBody(request);
       if (!body.context || typeof body.context !== 'object' || Array.isArray(body.context)) throw new ApiFailure(422, 'invalid_context', 'Context must be an object.');
-      const context = body.context as unknown as SessionContext;
-      if (context.confirmed !== true) throw new ApiFailure(422, 'confirmation_required', 'Context must be explicitly confirmed before generation.');
+      if (!validateSessionContext(body.context) || !body.context.confirmed) throw new ApiFailure(422, 'confirmation_required', 'A complete context must be explicitly confirmed before generation.');
+      const context = body.context;
       const nextRevision = session.context_revision + 1;
-      await env.DB.prepare(
-        "UPDATE ideation_sessions SET context_json = ?,context_revision = ?,review_required = 0,updated_at = datetime('now') WHERE id = ? AND guest_id = ?",
-      ).bind(JSON.stringify(context), nextRevision, session.id, owner.guest_id).run();
+      try {
+        await env.DB.batch([
+          env.DB.prepare(
+            `UPDATE ideation_sessions SET context_json = ?,context_revision = ?,review_required = 0,updated_at = datetime('now')
+             WHERE id = ? AND guest_id = ? AND status = 'active' AND context_revision = ?`,
+          ).bind(normalizeText(JSON.stringify(context)), nextRevision, session.id, owner.guest_id, session.context_revision),
+          env.DB.prepare('UPDATE persistence_fence SET valid = CASE WHEN changes() = 1 THEN 1 ELSE 0 END WHERE id = 1'),
+          env.DB.prepare('DELETE FROM session_context_drafts WHERE session_id = ?').bind(session.id),
+        ]);
+      } catch { throw new ApiFailure(409, 'revision_conflict', 'The session context changed. Reload and review it again.'); }
       return json({ session_id: session.id, context_revision: nextRevision, context });
     }
+    const opportunitiesMatch = path.match(/^\/api\/v1\/sessions\/([^/]+)\/opportunities$/);
+    if (opportunitiesMatch?.[1] && request.method === 'GET') {
+      const session = await ownedSession(env.DB, owner, opportunitiesMatch[1]);
+      requireActiveSession(session);
+      const stage = await env.DB.prepare("SELECT status FROM session_stage_runs WHERE session_id = ? AND stage = 'map'")
+        .bind(session.id).first<{ status: string }>();
+      const rows = await env.DB.prepare(
+        'SELECT id,session_id,problem,beneficiary,assumption,evidence_refs_json,created_at FROM opportunity_hypotheses WHERE session_id = ? ORDER BY datetime(created_at),rowid LIMIT 100',
+      ).bind(session.id).all<{ id: string; session_id: string; problem: string; beneficiary: string | null; assumption: string | null; evidence_refs_json: string; created_at: string }>();
+      return json({ stage_status: stage?.status || 'pending', opportunities: rows.results.map((row) => ({
+        id: row.id, session_id: row.session_id, problem: row.problem, beneficiary: row.beneficiary,
+        assumption: row.assumption, evidence_refs: JSON.parse(row.evidence_refs_json) as string[],
+        evidence_status: 'unverified', created_at: row.created_at,
+      })) });
+    }
+    const sessionBlueprintsMatch = path.match(/^\/api\/v1\/sessions\/([^/]+)\/blueprints$/);
+    if (sessionBlueprintsMatch?.[1] && request.method === 'GET') {
+      const session = await ownedSession(env.DB, owner, sessionBlueprintsMatch[1]);
+      requireActiveSession(session);
+      const rows = await env.DB.prepare(
+        `SELECT b.id,b.idea_version_id,b.version,b.review_required,b.created_at FROM blueprints b
+         JOIN idea_versions i ON i.id = b.idea_version_id WHERE i.session_id = ?
+         ORDER BY datetime(b.created_at) DESC,b.rowid DESC LIMIT 100`,
+      ).bind(session.id).all<BlueprintRow>();
+      return json({ blueprints: rows.results.map((row) => ({ ...row, review_required: Boolean(row.review_required) })) });
+    }
     const jobsMatch = path.match(/^\/api\/v1\/sessions\/([^/]+)\/jobs$/);
+    if (jobsMatch?.[1] && request.method === 'GET') {
+      const session = await ownedSession(env.DB, owner, jobsMatch[1]);
+      requireActiveSession(session);
+      const rows = await env.DB.prepare(
+        `SELECT id,job_type,status,stage,request_json,created_at FROM jobs WHERE session_id = ?
+         AND status IN ('queued','running','validating','retry_wait') ORDER BY datetime(created_at) DESC,rowid DESC LIMIT 10`,
+      ).bind(session.id).all<{ id: string; job_type: string; status: string; stage: string | null; request_json: string; created_at: string }>();
+      return json({ jobs: rows.results.map(({ request_json, ...row }) => ({
+        ...row, idea_version_id: (JSON.parse(request_json) as { idea_version_id?: string }).idea_version_id || null,
+      })) });
+    }
     if (jobsMatch?.[1] && request.method === 'POST') {
       const session = await ownedSession(env.DB, owner, jobsMatch[1]);
       const context = JSON.parse(session.context_json) as SessionContext;
@@ -603,16 +718,36 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
       return enqueueJob(request, env, owner, session, 'validation', { idea_version_id: idea.id });
     }
     const blueprintMatch = path.match(/^\/api\/v1\/ideas\/([^/]+)\/blueprints$/);
+    if (blueprintMatch?.[1] && request.method === 'GET') {
+      const idea = await ownedIdea(env.DB, owner, blueprintMatch[1]);
+      const session = await ownedSession(env.DB, owner, idea.session_id);
+      requireActiveSession(session);
+      const rows = await env.DB.prepare(
+        `SELECT id,idea_version_id,version,review_required,created_at FROM blueprints
+         WHERE idea_version_id = ? ORDER BY datetime(created_at) DESC,rowid DESC LIMIT 100`,
+      ).bind(idea.id).all<BlueprintRow>();
+      return json({ idea_version_id: idea.id, blueprints: rows.results.map((row) => ({ ...row, review_required: Boolean(row.review_required) })) });
+    }
     if (blueprintMatch?.[1] && request.method === 'POST') {
       const idea = await ownedIdea(env.DB, owner, blueprintMatch[1]);
       const session = await ownedSession(env.DB, owner, idea.session_id);
       return enqueueJob(request, env, owner, session, 'blueprint', { idea_version_id: idea.id });
     }
+    const blueprintReadMatch = path.match(/^\/api\/v1\/blueprints\/([^/]+)$/);
+    if (blueprintReadMatch?.[1] && request.method === 'GET') {
+      const blueprint = await env.DB.prepare(
+        `SELECT b.id,b.idea_version_id,b.version,b.review_required,b.created_at,b.content_markdown FROM blueprints b
+         JOIN idea_versions i ON i.id = b.idea_version_id JOIN ideation_sessions s ON s.id = i.session_id
+         WHERE b.id = ? AND s.guest_id = ? AND s.status = 'active'`,
+      ).bind(blueprintReadMatch[1], owner.guest_id).first<BlueprintRow & { content_markdown: string }>();
+      if (!blueprint) throw new ApiFailure(404, 'blueprint_not_found', 'Blueprint not found.');
+      return json({ ...blueprint, review_required: Boolean(blueprint.review_required), content_markdown: normalizeText(blueprint.content_markdown) });
+    }
     const exportMatch = path.match(/^\/api\/v1\/blueprints\/([^/]+)\/export\.md$/);
     if (exportMatch?.[1] && request.method === 'GET') {
       const blueprint = await env.DB.prepare(
         `SELECT b.content_markdown FROM blueprints b JOIN idea_versions i ON i.id = b.idea_version_id
-         JOIN ideation_sessions s ON s.id = i.session_id WHERE b.id = ? AND s.guest_id = ?`,
+         JOIN ideation_sessions s ON s.id = i.session_id WHERE b.id = ? AND s.guest_id = ? AND s.status = 'active'`,
       ).bind(exportMatch[1], owner.guest_id).first<{ content_markdown: string }>();
       if (!blueprint) throw new ApiFailure(404, 'blueprint_not_found', 'Blueprint not found.');
       return new Response(normalizeText(blueprint.content_markdown), { headers: { 'content-type': 'text/markdown; charset=utf-8', 'content-disposition': `attachment; filename="hacktor-${exportMatch[1]}.md"` } });

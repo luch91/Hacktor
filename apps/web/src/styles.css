@@ -4,6 +4,7 @@
 
 body {
   min-width: 320px;
+  transition: none;
 }
 
 button,
@@ -415,6 +416,30 @@ button:disabled {
 .stage-rail li.blocked small, .stage-rail li.failed small { color: var(--status-warning); }
 .stage-state { color: var(--text-muted); font-family: var(--font-mono); font-size: 12px; letter-spacing: 0; margin-left: var(--space-4); text-transform: uppercase; vertical-align: middle; }
 .stage-detail, .original-panel, .job-progress { background: var(--bg-raised); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); margin-top: var(--space-6); padding: var(--space-5); }
+.continuity-card { background: var(--bg-raised); border: 1px solid var(--accent); border-radius: var(--radius-lg); display: grid; gap: var(--space-2); margin-top: var(--space-8); max-width: 680px; padding: var(--space-5); }
+.continuity-card strong { font-family: var(--font-display); font-size: 22px; }
+.continuity-card p, .continuity-card small { color: var(--text-secondary); margin: 0; }
+.continuity-card button, .draft-indicator button { background: var(--accent-subtle); border: 1px solid var(--accent); border-radius: var(--radius-sm); color: var(--text-primary); cursor: pointer; min-height: 44px; padding: var(--space-2) var(--space-4); width: fit-content; }
+.draft-indicator { align-items: center; background: var(--bg-raised); border: 1px solid var(--border-strong); border-radius: var(--radius-md); display: flex; flex-wrap: wrap; gap: var(--space-3); margin-bottom: var(--space-5); padding: var(--space-4); }
+.draft-indicator.saved { border-color: var(--accent); }
+.draft-indicator.failed, .draft-indicator.conflict { border-color: var(--status-warning); }
+.draft-indicator p { color: var(--text-secondary); flex-basis: 100%; margin: 0; }
+.draft-indicator span { color: var(--text-muted); font-family: var(--font-mono); font-size: 12px; }
+.opportunity-grid { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); }
+.opportunity-card { border: 1px solid var(--border-strong); border-radius: var(--radius-md); min-width: 0; padding: var(--space-4); }
+.opportunity-card small { color: var(--status-warning); font-family: var(--font-mono); text-transform: uppercase; }
+.opportunity-card h3 { overflow-wrap: anywhere; }
+.blueprint-history { display: grid; gap: var(--space-2); list-style: none; padding: 0; }
+.blueprint-history button { background: var(--bg-input); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); color: var(--text-primary); cursor: pointer; min-height: 44px; padding: var(--space-3); text-align: left; width: 100%; }
+.blueprint-history button[aria-current='true'] { border-color: var(--accent); }
+.blueprint-toolbar { align-items: center; border-top: 1px solid var(--border-strong); display: flex; flex-wrap: wrap; gap: var(--space-4); margin-top: var(--space-5); padding-top: var(--space-4); }
+.blueprint-toolbar button { background: transparent; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); color: var(--text-primary); cursor: pointer; min-height: 44px; padding: var(--space-2) var(--space-3); }
+.blueprint-toolbar a { color: var(--accent); }
+.blueprint-document { line-height: 1.75; max-width: 72ch; overflow-wrap: anywhere; }
+.blueprint-document h2, .blueprint-document h3, .blueprint-document h4 { color: var(--text-primary); line-height: 1.25; margin: var(--space-8) 0 var(--space-3); }
+.blueprint-document h3 { border-top: 1px solid var(--border-subtle); padding-top: var(--space-5); }
+.blueprint-document p { margin: var(--space-2) 0; }
+.blueprint-list-line { padding-left: var(--space-4); }
 .stage-detail h2, .stage-detail h3 { font-family: var(--font-display); }
 .stage-detail p, .original-panel p { color: var(--text-secondary); overflow-wrap: anywhere; }
 .job-progress { display: flex; flex-wrap: wrap; gap: var(--space-3); justify-content: space-between; }

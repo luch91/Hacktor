@@ -92,6 +92,49 @@ export interface SessionContext {
   source_status: 'user_provided';
 }
 
+export interface SessionContextDraft {
+  session_id: string;
+  context: SessionContext;
+  base_context_revision: number;
+  draft_revision: number;
+  updated_at: string;
+}
+
+export interface BlueprintSummary {
+  id: string;
+  idea_version_id: string;
+  version: number;
+  review_required: boolean;
+  created_at: string;
+}
+
+export interface BlueprintRecord extends BlueprintSummary {
+  content_markdown: string;
+}
+
+export interface OpportunityHypothesis {
+  id: string;
+  session_id: string;
+  problem: string;
+  beneficiary: string | null;
+  assumption: string | null;
+  evidence_refs: string[];
+  evidence_status: 'unverified';
+  created_at: string;
+}
+
+export function validateSessionContext(value: unknown): value is SessionContext {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const item = value as Record<string, unknown>;
+  return typeof item.summary === 'string' && item.summary.length <= 40_000
+    && Array.isArray(item.beneficiaries) && item.beneficiaries.every((entry) => typeof entry === 'string')
+    && Array.isArray(item.goals) && item.goals.every((entry) => typeof entry === 'string')
+    && Array.isArray(item.hard_constraints) && item.hard_constraints.every((entry) => Boolean(entry) && typeof entry === 'object' && typeof (entry as { id?: unknown }).id === 'string' && typeof (entry as { text?: unknown }).text === 'string')
+    && Array.isArray(item.soft_constraints) && item.soft_constraints.every((entry) => Boolean(entry) && typeof entry === 'object' && typeof (entry as { id?: unknown }).id === 'string' && typeof (entry as { text?: unknown }).text === 'string')
+    && Array.isArray(item.unknowns) && item.unknowns.every((entry) => typeof entry === 'string')
+    && typeof item.confirmed === 'boolean' && item.source_status === 'user_provided';
+}
+
 type ValidationResult =
   | { success: true; data: IdeaCardV1 }
   | { success: false; errors: readonly string[] };

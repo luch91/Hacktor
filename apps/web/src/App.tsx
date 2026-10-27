@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import type { IdeaCardV1, IdeaCommand, SessionContext } from '@hacktor/contracts';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import type { BlueprintRecord, BlueprintSummary, IdeaCardV1, IdeaCommand, OpportunityHypothesis, SessionContext, SessionContextDraft } from '@hacktor/contracts';
 
 type ThemePreference = 'dark' | 'light' | 'system';
 type Mode = 'hackathon_first' | 'idea_first';
@@ -37,6 +37,14 @@ interface JobView {
   error: { message?: string } | null;
 }
 
+interface ActiveJobSummary { id: string; job_type: string; status: string; stage: string | null; idea_version_id: string | null }
+interface TrackedJob { id: string; kind: 'slate' | 'blueprint'; ideaId?: string | undefined }
+type DraftSaveState = 'idle' | 'unsaved' | 'saving' | 'saved' | 'conflict' | 'failed';
+
+class ApiRequestError extends Error {
+  constructor(message: string, readonly status: number, readonly code: string) { super(message); }
+}
+
 const stages = ['Understand', 'Map', 'Diverge', 'Interrogate', 'Evolve', 'Research', 'Converge', 'Blueprint'] as const;
 const actionCommands: Array<{ command: IdeaCommand; label: string }> = [
   { command: 'challenge', label: 'Challenge' },
@@ -65,13 +73,25 @@ function csrfToken(): string {
   return part?.split('=').slice(1).join('=') || sessionStorage.getItem('hacktor-csrf') || '';
 }
 
+function BlueprintDocument({ markdown }: { markdown: string }) {
+  return <article className="blueprint-document">{markdown.split(/\r?\n/).map((line, index) => {
+    const content = line.trim();
+    if (!content) return null;
+    if (content.startsWith('### ')) return <h4 key={index}>{content.slice(4)}</h4>;
+    if (content.startsWith('## ')) return <h3 key={index}>{content.slice(3)}</h3>;
+    if (content.startsWith('# ')) return <h2 key={index}>{content.slice(2)}</h2>;
+    if (/^(?:-|\d+\.)\s/.test(content)) return <p className="blueprint-list-line" key={index}>{content}</p>;
+    return <p key={index}>{content}</p>;
+  })}</article>;
+}
+
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   if (init?.body) headers.set('content-type', 'application/json');
   if (init?.method && init.method !== 'GET' && csrfToken()) headers.set('x-csrf-token', csrfToken());
   const response = await fetch(`/api/v1${path}`, { ...init, headers, credentials: 'same-origin' });
-  const body = (await response.json()) as { data?: T; error?: { message: string } };
-  if (!response.ok || !body.data) throw new Error(body.error?.message || `Request failed with ${response.status}`);
+  const body = (await response.json()) as { data?: T; error?: { message: string; code: string } };
+  if (!response.ok || !body.data) throw new ApiRequestError(body.error?.message || `Request failed with ${response.status}`, response.status, body.error?.code || 'request_failed');
   return body.data;
 }
 
@@ -93,7 +113,7 @@ export function App() {
   const [blueprintId, setBlueprintId] = useState('');
   const [stageStates, setStageStates] = useState<Record<string, StageView['status']>>({});
   const [evidence, setEvidence] = useState<EvidenceView | null>(null);
-  const [activeJob, setActiveJob] = useState<{ id: string; kind: 'slate' | 'blueprint'; ideaId?: string } | null>(null);
+  const [activeJob, setActiveJob] = useState<TrackedJob | null>(null);
   const [jobState, setJobState] = useState<JobView | null>(null);
   const [compareId, setCompareId] = useState('');
   const [activeStage, setActiveStage] = useState('diverge');
@@ -101,9 +121,25 @@ export function App() {
   const [blueprintIdeaId, setBlueprintIdeaId] = useState('');
   const [originalIdea, setOriginalIdea] = useState('');
   const [mobileView, setMobileView] = useState<'ideas' | 'inspector'>('ideas');
+  const [draftSaveState, setDraftSaveState] = useState<DraftSaveState>('idle');
+  const [draftRevision, setDraftRevision] = useState(0);
+  const draftRevisionRef = useRef(0);
+  const lastSavedDraftRef = useRef('');
+  const draftSavingRef = useRef(false);
+  const draftGenerationRef = useRef(0);
+  const draftBlockedRef = useRef(false);
+  const draftConfirmingRef = useRef(false);
+  const latestContextRef = useRef<SessionContext | null>(null);
+  const [blueprintHistory, setBlueprintHistory] = useState<BlueprintSummary[]>([]);
+  const [opportunities, setOpportunities] = useState<OpportunityHypothesis[]>([]);
+  const [mapStatus, setMapStatus] = useState('pending');
+  const [restorationStatus, setRestorationStatus] = useState('');
+  const [activeServerJobs, setActiveServerJobs] = useState<ActiveJobSummary[]>([]);
 
   const selected = useMemo(() => ideas.find((idea) => idea.id === selectedId) || ideas[0], [ideas, selectedId]);
   const compared = ideas.find((idea) => idea.id === compareId && idea.id !== selected?.id);
+  const selectedBlueprints = blueprintHistory.filter((blueprint) => blueprint.idea_version_id === selected?.id);
+  latestContextRef.current = context;
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-color-scheme: light)');
@@ -119,39 +155,57 @@ export function App() {
 
   useEffect(() => {
     const savedSession = localStorage.getItem('hacktor-session-id');
-    if (!savedSession || !csrfToken()) return;
+    if (!savedSession) return;
     void (async () => {
       try {
         const session = await api<{ title: string; mode: Mode; original_idea_text: string | null; context_revision: number; context: SessionContext; stages: StageView[] }>(`/sessions/${savedSession}`);
-        const ideaSet = await api<{ ideas: IdeaView[]; edges: EdgeView[] }>(`/sessions/${savedSession}/ideas`);
+        const [ideaSet, draftResult, blueprintsResult, opportunitiesResult, jobsResult] = await Promise.all([
+          api<{ ideas: IdeaView[]; edges: EdgeView[] }>(`/sessions/${savedSession}/ideas`),
+          api<{ draft: SessionContextDraft | null }>(`/sessions/${savedSession}/draft`),
+          api<{ blueprints: BlueprintSummary[] }>(`/sessions/${savedSession}/blueprints`),
+          api<{ stage_status: string; opportunities: OpportunityHypothesis[] }>(`/sessions/${savedSession}/opportunities`),
+          api<{ jobs: ActiveJobSummary[] }>(`/sessions/${savedSession}/jobs`),
+        ]);
+        draftGenerationRef.current += 1;
         setSessionId(savedSession);
         setTitle(session.title);
         setMode(session.mode);
         setOriginalIdea(session.original_idea_text || '');
         setRevision(session.context_revision);
-        let restoredContext = session.context;
-        if (!restoredContext.confirmed) {
-          try {
-            const draft = sessionStorage.getItem(`hacktor-review-${savedSession}`);
-            if (draft) restoredContext = JSON.parse(draft) as SessionContext;
-          } catch { sessionStorage.removeItem(`hacktor-review-${savedSession}`); }
-        }
+        const restoredContext = !session.context.confirmed && draftResult.draft?.base_context_revision === session.context_revision
+          ? draftResult.draft.context : session.context;
+        draftRevisionRef.current = draftResult.draft?.draft_revision || 0;
+        setDraftRevision(draftRevisionRef.current);
+        lastSavedDraftRef.current = JSON.stringify(restoredContext);
+        setDraftSaveState(draftResult.draft ? 'saved' : 'idle');
         setContext(restoredContext);
         setStageStates(Object.fromEntries(session.stages.map((stage) => [stage.stage, stage.status])));
         const savedStage = localStorage.getItem(`hacktor-stage-${savedSession}`);
         if (savedStage && stages.some((stage) => stage.toLowerCase() === savedStage)) setActiveStage(savedStage);
         setIdeas(ideaSet.ideas);
         setEdges(ideaSet.edges);
+        setBlueprintHistory(blueprintsResult.blueprints);
+        setOpportunities(opportunitiesResult.opportunities);
+        setMapStatus(opportunitiesResult.stage_status);
+        setActiveServerJobs(jobsResult.jobs);
         const savedSelection = localStorage.getItem(`hacktor-selected-${savedSession}`);
         setSelectedId(ideaSet.ideas.find((idea) => idea.id === savedSelection)?.id || ideaSet.ideas[0]?.id || '');
         const savedJob = localStorage.getItem(`hacktor-job-${savedSession}`);
-        if (savedJob) {
-          try { setActiveJob(JSON.parse(savedJob) as { id: string; kind: 'slate' | 'blueprint'; ideaId?: string }); } catch { localStorage.removeItem(`hacktor-job-${savedSession}`); }
-        }
+        const rememberedJob: TrackedJob | null = (() => {
+          if (!savedJob) return null;
+          try { return JSON.parse(savedJob) as TrackedJob; }
+          catch { localStorage.removeItem(`hacktor-job-${savedSession}`); return null; }
+        })();
+        const serverJob = jobsResult.jobs.find((job) => job.id === rememberedJob?.id) || jobsResult.jobs[0];
+        if (serverJob) setActiveJob({ id: serverJob.id, kind: serverJob.job_type === 'blueprint' ? 'blueprint' : 'slate', ideaId: serverJob.idea_version_id || (rememberedJob?.id === serverJob.id ? rememberedJob?.ideaId : undefined) });
+        else if (rememberedJob) setActiveJob(rememberedJob);
         setScreen(session.context.confirmed ? 'studio' : 'review');
-        setStatus('Restored the private local workspace.');
-      } catch {
-        localStorage.removeItem('hacktor-session-id');
+        setStatus(draftResult.draft ? 'Restored the saved review draft.' : 'Restored the private workspace.');
+      } catch (error) {
+        if (error instanceof ApiRequestError && [401, 404].includes(error.status)) {
+          localStorage.removeItem('hacktor-session-id');
+          setRestorationStatus(error.status === 401 ? 'Private access expired. Start a new workspace to continue.' : 'The saved workspace is no longer available.');
+        } else setRestorationStatus('Could not reach the saved workspace. Refresh to try again.');
       }
     })();
   }, []);
@@ -165,8 +219,65 @@ export function App() {
   }, [sessionId, activeStage]);
 
   useEffect(() => {
-    if (sessionId && context && !context.confirmed) sessionStorage.setItem(`hacktor-review-${sessionId}`, JSON.stringify(context));
-  }, [sessionId, context]);
+    if (!sessionId || !context || context.confirmed || screen !== 'review' || draftBlockedRef.current || draftConfirmingRef.current) return;
+    if (JSON.stringify(context) === lastSavedDraftRef.current) return;
+    setDraftSaveState('unsaved');
+    const timer = setTimeout(() => void saveDraft(context), 600);
+    return () => clearTimeout(timer);
+  }, [context, screen, sessionId]);
+
+  async function saveDraft(snapshot: SessionContext) {
+    if (!sessionId || draftSavingRef.current || draftBlockedRef.current || draftConfirmingRef.current) return;
+    const generation = draftGenerationRef.current;
+    const serialized = JSON.stringify(snapshot);
+    if (serialized === lastSavedDraftRef.current) return;
+    draftSavingRef.current = true;
+    setDraftSaveState('saving');
+    let succeeded = false;
+    try {
+      const result = await api<{ draft: SessionContextDraft }>(`/sessions/${sessionId}/draft`, {
+        method: 'PUT', headers: { 'if-match': String(draftRevisionRef.current) },
+        body: JSON.stringify({ context: snapshot, base_context_revision: revision }),
+      });
+      if (generation !== draftGenerationRef.current) return;
+      draftRevisionRef.current = result.draft.draft_revision;
+      setDraftRevision(result.draft.draft_revision);
+      lastSavedDraftRef.current = serialized;
+      succeeded = true;
+      setDraftSaveState(JSON.stringify(latestContextRef.current) === serialized ? 'saved' : 'unsaved');
+    } catch (error) {
+      if (generation !== draftGenerationRef.current) return;
+      if (error instanceof ApiRequestError && error.status === 409) {
+        draftBlockedRef.current = true;
+        setDraftSaveState('conflict');
+      } else setDraftSaveState('failed');
+    } finally {
+      draftSavingRef.current = false;
+      const latest = latestContextRef.current;
+      if (succeeded && generation === draftGenerationRef.current && latest && JSON.stringify(latest) !== serialized) void saveDraft(latest);
+    }
+  }
+
+  async function resolveDraftConflict(choice: 'reload' | 'replace') {
+    if (!sessionId || !context) return;
+    const localContext = context;
+    try {
+      const result = await api<{ draft: SessionContextDraft | null }>(`/sessions/${sessionId}/draft`);
+      draftRevisionRef.current = result.draft?.draft_revision || 0;
+      setDraftRevision(draftRevisionRef.current);
+      if (choice === 'reload') {
+        const restored = result.draft?.context || context;
+        lastSavedDraftRef.current = JSON.stringify(restored);
+        setContext(restored);
+        setDraftSaveState('saved');
+      } else {
+        lastSavedDraftRef.current = JSON.stringify(result.draft?.context || '');
+        draftBlockedRef.current = false;
+        await saveDraft(localContext);
+      }
+      draftBlockedRef.current = false;
+    } catch { setDraftSaveState('failed'); }
+  }
 
   useEffect(() => {
     if (!activeJob || !sessionId) return;
@@ -182,17 +293,26 @@ export function App() {
         if (job.status === 'completed') {
           const ideasResult = await api<{ ideas: IdeaView[]; edges: EdgeView[] }>(`/sessions/${sessionId}/ideas`);
           const sessionResult = await api<{ stages: StageView[] }>(`/sessions/${sessionId}`);
+          const [historyResult, mapResult] = await Promise.all([
+            api<{ blueprints: BlueprintSummary[] }>(`/sessions/${sessionId}/blueprints`),
+            api<{ stage_status: string; opportunities: OpportunityHypothesis[] }>(`/sessions/${sessionId}/opportunities`),
+          ]);
           if (cancelled) return;
           setIdeas(ideasResult.ideas);
           setEdges(ideasResult.edges);
           setSelectedId((current) => current || ideasResult.ideas[0]?.id || '');
           setStageStates(Object.fromEntries(sessionResult.stages.map((stage) => [stage.stage, stage.status])));
+          setBlueprintHistory(historyResult.blueprints);
+          setOpportunities(mapResult.opportunities);
+          setMapStatus(mapResult.stage_status);
+          setActiveServerJobs((current) => current.filter((item) => item.id !== activeJob.id));
           if (activeJob.kind === 'blueprint' && job.result?.artifact_ids?.[0]) {
             const id = job.result.artifact_ids[0];
-            setBlueprintId(id);
-            setBlueprintIdeaId(activeJob.ideaId || '');
-            const response = await fetch(`/api/v1/blueprints/${id}/export.md`, { credentials: 'same-origin' });
-            if (response.ok && !cancelled) setBlueprintText(await response.text());
+            const blueprint = await api<BlueprintRecord>(`/blueprints/${id}`);
+            if (cancelled) return;
+            setBlueprintId(blueprint.id);
+            setBlueprintIdeaId(blueprint.idea_version_id);
+            setBlueprintText(blueprint.content_markdown);
             setActiveStage('blueprint');
             setMobileView('ideas');
           }
@@ -202,6 +322,7 @@ export function App() {
           return;
         }
         if (job.status === 'failed' || job.status === 'blocked_quota' || job.status === 'cancelled') {
+          setActiveServerJobs((current) => current.filter((item) => item.id !== activeJob.id));
           setStatus(job.error?.message || `Job ${job.status}. Review the context and try again if safe.`);
           localStorage.removeItem(`hacktor-job-${sessionId}`);
           setActiveJob(null);
@@ -259,6 +380,18 @@ export function App() {
         body: JSON.stringify({ mode, title, ...(mode === 'idea_first' ? { original_idea_text: input } : {}) }),
       });
       sessionStorage.setItem('hacktor-csrf', created.csrf_token);
+      draftGenerationRef.current += 1;
+      draftRevisionRef.current = 0;
+      lastSavedDraftRef.current = '';
+      draftBlockedRef.current = false;
+      setDraftRevision(0);
+      setDraftSaveState('unsaved');
+      setIdeas([]);
+      setEdges([]);
+      setSelectedId('');
+      setBlueprintHistory([]);
+      setOpportunities([]);
+      setActiveJob(null);
       setSessionId(created.session_id);
       localStorage.setItem('hacktor-session-id', created.session_id);
       setRevision(created.context_revision);
@@ -275,6 +408,8 @@ export function App() {
 
   async function confirmContext() {
     if (!context) return;
+    draftConfirmingRef.current = true;
+    draftGenerationRef.current += 1;
     setBusy(true);
     try {
       const confirmed = { ...context, confirmed: true };
@@ -284,13 +419,22 @@ export function App() {
         body: JSON.stringify({ context: confirmed }),
       });
       setContext(result.context);
-      sessionStorage.removeItem(`hacktor-review-${sessionId}`);
+      lastSavedDraftRef.current = '';
+      draftRevisionRef.current = 0;
+      setDraftRevision(0);
+      setDraftSaveState('idle');
       setRevision(result.context_revision);
       setScreen('studio');
       setStatus('Context confirmed. Generate a diverse slate when ready.');
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Unable to confirm context.');
+      try {
+        const latest = await api<{ draft: SessionContextDraft | null }>(`/sessions/${sessionId}/draft`);
+        draftRevisionRef.current = latest.draft?.draft_revision || 0;
+        setDraftRevision(draftRevisionRef.current);
+      } catch { /* Keep the local interpretation visible for recovery. */ }
     } finally {
+      draftConfirmingRef.current = false;
       setBusy(false);
     }
   }
@@ -389,6 +533,21 @@ export function App() {
     }
   }
 
+  async function openBlueprint(id: string) {
+    setBusy(true);
+    try {
+      const blueprint = await api<BlueprintRecord>(`/blueprints/${id}`);
+      setBlueprintId(blueprint.id);
+      setBlueprintIdeaId(blueprint.idea_version_id);
+      setBlueprintText(blueprint.content_markdown);
+      setSelectedId(blueprint.idea_version_id);
+      setActiveStage('blueprint');
+      setMobileView('ideas');
+      setStatus('Reopened a stored blueprint for its exact idea version.');
+    } catch (error) { setStatus(error instanceof Error ? error.message : 'Could not reopen the blueprint.'); }
+    finally { setBusy(false); }
+  }
+
   return (
     <main>
       <header className="site-header">
@@ -407,6 +566,8 @@ export function App() {
           <p className="eyebrow">Deep Ideation Studio</p>
           <h1>Find the idea beneath the <span>obvious one.</span></h1>
           <p className="hero-copy">Map overlooked problems, generate nine structurally different directions, challenge assumptions, preserve every branch, and turn one exact version into a build-ready blueprint.</p>
+          {sessionId && <div className="continuity-card"><strong>Continue {title}</strong><p>{context?.confirmed ? activeJob ? 'A job is still in progress.' : ideas.length ? 'Return to your ideas and stored artifacts.' : 'Context confirmed. Ready to explore.' : 'Your context review is unfinished.'}</p><button onClick={() => setScreen(context?.confirmed ? 'studio' : 'review')} type="button">Continue current workspace</button><small>Starting a new guest workspace replaces access to this one in this browser.</small></div>}
+          {restorationStatus && <p className="status-line" role="status">{restorationStatus}</p>}
           <div className="entry-grid">
             <button onClick={() => begin('hackathon_first')} type="button"><small>01 / Brief-led</small><strong>Start with a hackathon</strong><span>Paste the official brief, review constraints, then explore.</span></button>
             <button onClick={() => begin('idea_first')} type="button"><small>02 / Idea-led</small><strong>Start with an idea</strong><span>Keep your original words intact, then branch beyond them.</span></button>
@@ -438,6 +599,7 @@ export function App() {
             <label>Working summary<textarea rows={8} value={context.summary} onChange={(event) => setContext({ ...context, summary: event.target.value })} /></label>
             <div className="constraint-panel"><h2>Hard constraints</h2>{context.hard_constraints.length ? context.hard_constraints.map((item) => <p key={item.id}>{item.text}</p>) : <p>No hard constraints detected. Add them to the summary if needed.</p>}<h2>Unknowns</h2>{context.unknowns.map((item) => <p key={item}>{item}</p>)}</div>
           </div>
+          <div className={`draft-indicator ${draftSaveState}`} role="status" aria-live="polite"><strong>Working draft: {draftSaveState}</strong>{draftRevision > 0 && <span> Revision {draftRevision}</span>}{draftSaveState === 'failed' && <><p>Could not save. Your edits remain on this screen.</p><button onClick={() => void saveDraft(context)} type="button">Retry save</button></>}{draftSaveState === 'conflict' && <><p>Another tab saved a newer draft. Choose which work to keep.</p><button onClick={() => void resolveDraftConflict('reload')} type="button">Load saved draft</button><button onClick={() => void resolveDraftConflict('replace')} type="button">Replace saved draft with my edits</button></>}</div>
           <button disabled={busy} onClick={() => void confirmContext()} type="button">Confirm context and enter Studio</button>
           <p className="status-line" role="status">{status}</p>
         </section>
@@ -451,10 +613,11 @@ export function App() {
             <div className="canvas-header"><div><p className="eyebrow">{title} / {mode === 'idea_first' ? 'Idea first' : 'Hackathon first'}</p><h1>{stages.find((stage) => stage.toLowerCase() === activeStage)}<span className="stage-state">{stageStates[activeStage] || 'pending'}</span></h1></div><button disabled={busy || Boolean(activeJob)} onClick={() => void generate()} type="button">{activeJob ? 'Job in progress' : ideas.length ? 'Generate another slate' : 'Generate diverse slate'}</button></div>
             <p className="status-line" role="status">{status}</p>
             {activeJob && <div className="job-progress" role="status"><strong>{jobState?.status.replaceAll('_', ' ') || 'queued'}</strong><span>{jobState?.stage || 'Awaiting stage update'} {jobState?.progress.stage_index ? `${jobState.progress.stage_index} of ${jobState.progress.stage_count || 8}` : ''}</span></div>}
+            {activeServerJobs.length > 1 && <div className="stage-detail"><h2>Unfinished jobs</h2>{activeServerJobs.map((job) => <button className="compare-link" key={job.id} onClick={() => setActiveJob({ id: job.id, kind: job.job_type === 'blueprint' ? 'blueprint' : 'slate', ideaId: job.idea_version_id || undefined })} type="button">Track {job.job_type.replaceAll('_', ' ')}: {job.status.replaceAll('_', ' ')}</button>)}</div>}
             {activeStage === 'understand' && context && <div className="stage-detail"><h2>Working context</h2>{mode === 'idea_first' && <p><strong>Original words:</strong> {originalIdea}</p>}<p>{context.summary}</p><h3>Hard constraints</h3>{context.hard_constraints.length ? context.hard_constraints.map((item) => <p key={item.id}>{item.text}</p>) : <p>None confirmed in the current context.</p>}<h3>Unknowns</h3>{context.unknowns.map((item) => <p key={item}>{item}</p>)}</div>}
-            {activeStage === 'map' && <div className="stage-detail"><h2>Opportunity map</h2><p>Map output is limited to the confirmed builder context. No organizer rules or external opportunity claims have been verified.</p></div>}
+            {activeStage === 'map' && <div className="stage-detail"><h2>Opportunity map</h2><p>Stage status: {mapStatus}. These stored entries are unverified hypotheses derived from the workspace. No organizer rules or external sources were checked.</p>{opportunities.length ? <div className="opportunity-grid">{opportunities.map((item) => <article className="opportunity-card" key={item.id}><small>Unverified hypothesis</small><h3>{item.problem}</h3><p><strong>Potential beneficiary:</strong> {item.beneficiary || 'Not recorded'}</p><p><strong>Working assumption:</strong> {item.assumption || 'Not recorded'}</p><p><strong>Suspected bottleneck:</strong> Not separately recorded.</p><p><strong>Source evidence:</strong> {item.evidence_refs.length ? `${item.evidence_refs.length} references need verification.` : 'No verified references.'}</p><p><strong>Unknown:</strong> Whether this problem and mechanism occur in the target setting.</p></article>)}</div> : <p>No opportunity hypotheses are stored yet. A deterministic local slate can create working hypotheses; unavailable generation leaves this stage empty.</p>}<p>Stable hypothesis identifiers are retained, but idea cards are not yet linked to them.</p></div>}
             {activeStage === 'research' && <div className="stage-detail"><h2>Research coverage</h2><p>Automated sources are disabled. Claim records below are hypotheses or builder supplied observations until independently verified.</p>{evidence?.claims.length ? evidence.claims.map((claim) => <div className="evidence-claim" key={claim.id}><strong>{claim.claim_type} / {claim.verification_status}</strong><p>{claim.claim}</p></div>) : <p>No source backed claims are attached to this version.</p>}</div>}
-            {activeStage === 'blueprint' && <div className="stage-detail"><h2>Blueprint review</h2>{blueprintText && blueprintIdeaId === selected?.id ? <><p>Bound to {selected.card.name}, version {blueprintIdeaId.slice(0, 8)}.</p><pre className="blueprint-preview">{blueprintText}</pre><a className="export-link" href={`/api/v1/blueprints/${blueprintId}/export.md`}>Export Markdown blueprint</a></> : <p>Select an idea and create a blueprint to review its stored artifact. A blueprint from another version is never shown as this version's.</p>}</div>}
+            {activeStage === 'blueprint' && <div className="stage-detail"><h2>Blueprint review</h2><p>Selected idea: {selected?.card.name || 'None'}, version {selected?.id.slice(0, 8) || 'none'}. Each artifact belongs to this exact immutable version.</p><h3>Stored blueprint history</h3>{selectedBlueprints.length ? <ul className="blueprint-history">{selectedBlueprints.map((item) => <li key={item.id}><button aria-current={blueprintId === item.id ? 'true' : undefined} onClick={() => void openBlueprint(item.id)} type="button">Blueprint {item.id.slice(0, 8)} / version {item.version} / {item.created_at}</button></li>)}</ul> : <p>No stored blueprint exists for this version. Create one using the selected version in the inspector.</p>}{blueprintText && blueprintIdeaId === selected?.id && <><div className="blueprint-toolbar"><span>Opened artifact {blueprintId.slice(0, 8)}</span><button onClick={() => setActiveStage('diverge')} type="button">Return to selected idea</button><a href={`/api/v1/blueprints/${blueprintId}/export.md`}>Export Markdown blueprint</a></div><BlueprintDocument markdown={blueprintText} /></>}</div>}
             {activeStage === 'interrogate' && <div className="stage-detail"><h2>Interrogate the selected version</h2><p>Challenge records weaknesses and assumptions without editing the version.</p>{critique ? Object.entries(critique).map(([key, values]) => <div key={key}><strong>{key.replaceAll('_', ' ')}</strong>{values.map((value) => <p key={value}>{value}</p>)}</div>) : <p>Choose Challenge in the inspector to record a critique.</p>}</div>}
             {activeStage === 'converge' && <div className="stage-detail"><h2>Compare two chosen directions</h2><p>Choose a second version in the inspector. Comparison uses stored card text, not an originality score.</p>{selected && compared && <div className="comparison-grid">{[selected, compared].map((idea) => <article key={idea.id}><h3>{idea.card.name}</h3><p><strong>Beneficiary:</strong> {idea.card.target_user}</p><p><strong>Problem:</strong> {idea.card.problem}</p><p><strong>Mechanism:</strong> {idea.card.mechanism}</p><p><strong>Demo:</strong> {idea.card.demo_moment}</p><p><strong>Dependencies:</strong> {idea.card.dependencies?.join(', ') || 'Not specified'}</p><p><strong>Unknowns:</strong> {idea.card.unknowns?.join(', ') || 'Not specified'}</p></article>)}</div>}</div>}
             {!ideas.length ? <div className="empty-canvas"><span>09</span><h2>Nine strategies are ready.</h2><p>Confirming context does not generate anything. Start the deterministic local run when you are ready.</p></div> : (

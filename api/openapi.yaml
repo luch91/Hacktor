@@ -115,7 +115,52 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Data' }
         '409': { $ref: '#/components/responses/Error' }
+  /sessions/{id}/draft:
+    get:
+      tags: [Intake]
+      summary: Read the owner's unconfirmed working draft
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { $ref: '#/components/responses/Data' }
+        '404': { $ref: '#/components/responses/Error' }
+    put:
+      tags: [Intake]
+      summary: Create or replace a draft with revision compare and swap
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/DraftIfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [context, base_context_revision]
+              properties:
+                context: { $ref: '#/components/schemas/SessionContext' }
+                base_context_revision: { type: integer, minimum: 1 }
+      responses:
+        '200': { $ref: '#/components/responses/Data' }
+        '409': { $ref: '#/components/responses/Error' }
+        '428': { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [Intake]
+      summary: Discard exactly the draft revision supplied
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/DraftIfMatch'
+      responses:
+        '200': { $ref: '#/components/responses/Data' }
+        '409': { $ref: '#/components/responses/Error' }
   /sessions/{id}/jobs:
+    get:
+      tags: [Intelligence]
+      summary: List unfinished jobs in the owner-authorized session
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { $ref: '#/components/responses/Data' }
     post:
       tags: [Intelligence]
       summary: Queue map or diverse slate generation
@@ -161,6 +206,23 @@ paths:
         - $ref: '#/components/parameters/Id'
       responses:
         '200': { $ref: '#/components/responses/Data' }
+  /sessions/{id}/opportunities:
+    get:
+      tags: [Studio]
+      summary: Read stored, unverified opportunity hypotheses and Map stage status
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { $ref: '#/components/responses/Data' }
+        '404': { $ref: '#/components/responses/Error' }
+  /sessions/{id}/blueprints:
+    get:
+      tags: [Blueprint]
+      summary: List blueprint history across the owner's session
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { $ref: '#/components/responses/Data' }
   /ideas/{id}/actions:
     post:
       tags: [Studio]
@@ -195,6 +257,13 @@ paths:
       responses:
         '202': { $ref: '#/components/responses/AcceptedJob' }
   /ideas/{id}/blueprints:
+    get:
+      tags: [Blueprint]
+      summary: List blueprints bound to one owner-authorized idea version
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { $ref: '#/components/responses/Data' }
     post:
       tags: [Blueprint]
       summary: Generate a blueprint bound to an idea version
@@ -203,6 +272,15 @@ paths:
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
         '202': { $ref: '#/components/responses/AcceptedJob' }
+  /blueprints/{id}:
+    get:
+      tags: [Blueprint]
+      summary: Read one stored blueprint bound to its immutable idea version
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { $ref: '#/components/responses/Data' }
+        '404': { $ref: '#/components/responses/Error' }
   /blueprints/{id}/export.md:
     get:
       tags: [Blueprint]
@@ -252,7 +330,62 @@ components:
       in: header
       required: true
       schema: { type: string, minLength: 8, maxLength: 128 }
+    DraftIfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: Current draft revision, or 0 when creating the first draft.
+      schema: { type: string, pattern: '^(0|[1-9][0-9]*)$' }
   schemas:
+    SessionContext:
+      type: object
+      required: [summary, beneficiaries, goals, hard_constraints, soft_constraints, unknowns, confirmed, source_status]
+      properties:
+        summary: { type: string, maxLength: 40000 }
+        beneficiaries: { type: array, items: { type: string } }
+        goals: { type: array, items: { type: string } }
+        hard_constraints: { type: array, items: { type: object, required: [id, text] } }
+        soft_constraints: { type: array, items: { type: object, required: [id, text] } }
+        unknowns: { type: array, items: { type: string } }
+        confirmed: { type: boolean, const: false }
+        source_status: { type: string, const: user_provided }
+    SessionContextDraft:
+      type: object
+      required: [session_id, context, base_context_revision, draft_revision, updated_at]
+      properties:
+        session_id: { type: string }
+        context: { $ref: '#/components/schemas/SessionContext' }
+        base_context_revision: { type: integer, minimum: 1 }
+        draft_revision: { type: integer, minimum: 1 }
+        updated_at: { type: string }
+    BlueprintSummary:
+      type: object
+      required: [id, idea_version_id, version, review_required, created_at]
+      properties:
+        id: { type: string }
+        idea_version_id: { type: string }
+        version: { type: integer, minimum: 1 }
+        review_required: { type: boolean }
+        created_at: { type: string }
+    BlueprintRecord:
+      allOf:
+        - { $ref: '#/components/schemas/BlueprintSummary' }
+        - type: object
+          required: [content_markdown]
+          properties:
+            content_markdown: { type: string }
+    OpportunityHypothesis:
+      type: object
+      required: [id, session_id, problem, beneficiary, assumption, evidence_refs, evidence_status, created_at]
+      properties:
+        id: { type: string }
+        session_id: { type: string }
+        problem: { type: string }
+        beneficiary: { type: [string, 'null'] }
+        assumption: { type: [string, 'null'] }
+        evidence_refs: { type: array, items: { type: string } }
+        evidence_status: { type: string, const: unverified }
+        created_at: { type: string }
     SourceStatus:
       type: string
       enum: [verified_brief, partial_evidence, user_provided]
