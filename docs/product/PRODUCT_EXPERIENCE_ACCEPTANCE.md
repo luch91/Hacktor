@@ -28,4 +28,6 @@ Choose either entry path, review and confirm the working context, generate the d
 
 GO for local product-experience review. Review drafts are scoped to the same browser tab, stored blueprint history is not yet navigable after refresh, and Map lacks a dedicated persisted opportunity artifact. These are next milestone contract decisions. This result does not establish live model quality, verified external research, production readiness or deployment authorization.
 
+The follow-on Product Continuity work addresses these limits on `feat/m2-product-continuity`. See [the continuity gate](../gates/M2_PRODUCT_CONTINUITY_GATE.md) for its separate evidence and decision.
+
 Live model quality, authorized external research, production release and multi-workspace accounts are outside this gate. A local pass does not approve external users or deployment.

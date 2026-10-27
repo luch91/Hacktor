@@ -58,6 +58,7 @@ test('mobile idea-first journey preserves the original and remains operable', as
   await page.getByRole('button', { name: 'Review context' }).click();
   await expect(page.getByLabel('Working summary')).toHaveValue(original);
   await page.getByLabel('Working summary').fill(`${original} Make it usable without an account.`);
+  await expect(page.getByText('Working draft: saved')).toBeVisible();
   await page.reload();
   await expect(page.getByLabel('Working summary')).toHaveValue(`${original} Make it usable without an account.`);
   await expect(page.getByText(original, { exact: true })).toBeVisible();
@@ -75,7 +76,7 @@ test('desktop hackathon job resumes after an interrupted status response', async
   test.skip(testInfo.project.name !== 'desktop', 'Desktop recovery check only');
   let submissions = 0;
   await page.route('**/api/v1/sessions/*/jobs', async (route) => {
-    submissions += 1;
+    if (route.request().method() === 'POST') submissions += 1;
     await route.continue();
   });
   let interrupted = false;
