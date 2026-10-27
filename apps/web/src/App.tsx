@@ -29,6 +29,14 @@ interface EvidenceView {
   claims: Array<{ id: string; claim: string; claim_type: string; verification_status: string }>;
 }
 
+interface JobView {
+  status: string;
+  stage: string | null;
+  progress: { stage_index?: number; stage_count?: number };
+  result: { artifact_ids?: string[] } | null;
+  error: { message?: string } | null;
+}
+
 const stages = ['Understand', 'Map', 'Diverge', 'Interrogate', 'Evolve', 'Research', 'Converge', 'Blueprint'] as const;
 const actionCommands: Array<{ command: IdeaCommand; label: string }> = [
   { command: 'challenge', label: 'Challenge' },
@@ -85,8 +93,17 @@ export function App() {
   const [blueprintId, setBlueprintId] = useState('');
   const [stageStates, setStageStates] = useState<Record<string, StageView['status']>>({});
   const [evidence, setEvidence] = useState<EvidenceView | null>(null);
+  const [activeJob, setActiveJob] = useState<{ id: string; kind: 'slate' | 'blueprint'; ideaId?: string } | null>(null);
+  const [jobState, setJobState] = useState<JobView | null>(null);
+  const [compareId, setCompareId] = useState('');
+  const [activeStage, setActiveStage] = useState('diverge');
+  const [blueprintText, setBlueprintText] = useState('');
+  const [blueprintIdeaId, setBlueprintIdeaId] = useState('');
+  const [originalIdea, setOriginalIdea] = useState('');
+  const [mobileView, setMobileView] = useState<'ideas' | 'inspector'>('ideas');
 
   const selected = useMemo(() => ideas.find((idea) => idea.id === selectedId) || ideas[0], [ideas, selectedId]);
+  const compared = ideas.find((idea) => idea.id === compareId && idea.id !== selected?.id);
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-color-scheme: light)');
@@ -105,23 +122,101 @@ export function App() {
     if (!savedSession || !csrfToken()) return;
     void (async () => {
       try {
-        const session = await api<{ title: string; context_revision: number; context: SessionContext; stages: StageView[] }>(`/sessions/${savedSession}`);
+        const session = await api<{ title: string; mode: Mode; original_idea_text: string | null; context_revision: number; context: SessionContext; stages: StageView[] }>(`/sessions/${savedSession}`);
         const ideaSet = await api<{ ideas: IdeaView[]; edges: EdgeView[] }>(`/sessions/${savedSession}/ideas`);
         setSessionId(savedSession);
         setTitle(session.title);
+        setMode(session.mode);
+        setOriginalIdea(session.original_idea_text || '');
         setRevision(session.context_revision);
-        setContext(session.context);
+        let restoredContext = session.context;
+        if (!restoredContext.confirmed) {
+          try {
+            const draft = sessionStorage.getItem(`hacktor-review-${savedSession}`);
+            if (draft) restoredContext = JSON.parse(draft) as SessionContext;
+          } catch { sessionStorage.removeItem(`hacktor-review-${savedSession}`); }
+        }
+        setContext(restoredContext);
         setStageStates(Object.fromEntries(session.stages.map((stage) => [stage.stage, stage.status])));
+        const savedStage = localStorage.getItem(`hacktor-stage-${savedSession}`);
+        if (savedStage && stages.some((stage) => stage.toLowerCase() === savedStage)) setActiveStage(savedStage);
         setIdeas(ideaSet.ideas);
         setEdges(ideaSet.edges);
-        if (ideaSet.ideas[0]) setSelectedId(ideaSet.ideas[0].id);
-        setScreen('studio');
+        const savedSelection = localStorage.getItem(`hacktor-selected-${savedSession}`);
+        setSelectedId(ideaSet.ideas.find((idea) => idea.id === savedSelection)?.id || ideaSet.ideas[0]?.id || '');
+        const savedJob = localStorage.getItem(`hacktor-job-${savedSession}`);
+        if (savedJob) {
+          try { setActiveJob(JSON.parse(savedJob) as { id: string; kind: 'slate' | 'blueprint'; ideaId?: string }); } catch { localStorage.removeItem(`hacktor-job-${savedSession}`); }
+        }
+        setScreen(session.context.confirmed ? 'studio' : 'review');
         setStatus('Restored the private local workspace.');
       } catch {
         localStorage.removeItem('hacktor-session-id');
       }
     })();
   }, []);
+
+  useEffect(() => {
+    if (sessionId && selectedId) localStorage.setItem(`hacktor-selected-${sessionId}`, selectedId);
+  }, [sessionId, selectedId]);
+
+  useEffect(() => {
+    if (sessionId) localStorage.setItem(`hacktor-stage-${sessionId}`, activeStage);
+  }, [sessionId, activeStage]);
+
+  useEffect(() => {
+    if (sessionId && context && !context.confirmed) sessionStorage.setItem(`hacktor-review-${sessionId}`, JSON.stringify(context));
+  }, [sessionId, context]);
+
+  useEffect(() => {
+    if (!activeJob || !sessionId) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let checks = 0;
+    localStorage.setItem(`hacktor-job-${sessionId}`, JSON.stringify(activeJob));
+    const poll = async () => {
+      try {
+        const job = await api<JobView>(`/jobs/${activeJob.id}`);
+        if (cancelled) return;
+        setJobState(job);
+        if (job.status === 'completed') {
+          const ideasResult = await api<{ ideas: IdeaView[]; edges: EdgeView[] }>(`/sessions/${sessionId}/ideas`);
+          const sessionResult = await api<{ stages: StageView[] }>(`/sessions/${sessionId}`);
+          if (cancelled) return;
+          setIdeas(ideasResult.ideas);
+          setEdges(ideasResult.edges);
+          setSelectedId((current) => current || ideasResult.ideas[0]?.id || '');
+          setStageStates(Object.fromEntries(sessionResult.stages.map((stage) => [stage.stage, stage.status])));
+          if (activeJob.kind === 'blueprint' && job.result?.artifact_ids?.[0]) {
+            const id = job.result.artifact_ids[0];
+            setBlueprintId(id);
+            setBlueprintIdeaId(activeJob.ideaId || '');
+            const response = await fetch(`/api/v1/blueprints/${id}/export.md`, { credentials: 'same-origin' });
+            if (response.ok && !cancelled) setBlueprintText(await response.text());
+            setActiveStage('blueprint');
+            setMobileView('ideas');
+          }
+          setStatus(`${activeJob.kind === 'slate' ? 'Idea slate' : 'Blueprint'} completed. Content uses the deterministic test adapter.`);
+          localStorage.removeItem(`hacktor-job-${sessionId}`);
+          setActiveJob(null);
+          return;
+        }
+        if (job.status === 'failed' || job.status === 'blocked_quota' || job.status === 'cancelled') {
+          setStatus(job.error?.message || `Job ${job.status}. Review the context and try again if safe.`);
+          localStorage.removeItem(`hacktor-job-${sessionId}`);
+          setActiveJob(null);
+          return;
+        }
+        setStatus(`Job ${job.status.replaceAll('_', ' ')}${job.stage ? `: ${job.stage}` : ''}. You can refresh and return to this workspace.`);
+      } catch {
+        if (!cancelled) setStatus('Connection interrupted. Checking the existing job again; no new job was submitted.');
+      }
+      checks += 1;
+      if (!cancelled) timer = setTimeout(() => void poll(), Math.min(1500 * Math.ceil(checks / 5), 15_000));
+    };
+    void poll();
+    return () => { cancelled = true; if (timer) clearTimeout(timer); };
+  }, [activeJob, sessionId]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -168,6 +263,7 @@ export function App() {
       localStorage.setItem('hacktor-session-id', created.session_id);
       setRevision(created.context_revision);
       setContext(parsed);
+      setOriginalIdea(mode === 'idea_first' ? input : '');
       setScreen('review');
       setStatus('Review and confirm the context before generation.');
     } catch (error) {
@@ -188,6 +284,7 @@ export function App() {
         body: JSON.stringify({ context: confirmed }),
       });
       setContext(result.context);
+      sessionStorage.removeItem(`hacktor-review-${sessionId}`);
       setRevision(result.context_revision);
       setScreen('studio');
       setStatus('Context confirmed. Generate a diverse slate when ready.');
@@ -211,8 +308,9 @@ export function App() {
   }
 
   async function generate() {
+    if (activeJob) return;
     setBusy(true);
-    setStatus('Running the eight-stage deterministic local demonstration...');
+    setStatus('Submitting the deterministic local slate job...');
     try {
       const key = crypto.randomUUID();
       const job = await api<{ job_id: string }>(`/sessions/${sessionId}/jobs`, {
@@ -220,10 +318,7 @@ export function App() {
         headers: { 'idempotency-key': key },
         body: JSON.stringify({ job_type: 'diverse_slate', preferences: { count: 9 } }),
       });
-      const state = await api<{ status: string }>(`/jobs/${job.job_id}`);
-      await loadIdeas();
-      await loadStages();
-      setStatus(`Job ${state.status}. Results use the deterministic test adapter, not live AI.`);
+      setActiveJob({ id: job.job_id, kind: 'slate' });
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Generation failed.');
     } finally {
@@ -236,13 +331,15 @@ export function App() {
     if (command === 'combine') return;
     setBusy(true);
     try {
-      const result = await api<{ critique?: Record<string, string[]> }>(`/ideas/${selected.id}/actions`, {
+      const result = await api<{ critique?: Record<string, string[]>; idea_version_id?: string }>(`/ideas/${selected.id}/actions`, {
         method: 'POST',
         headers: { 'idempotency-key': crypto.randomUUID() },
         body: JSON.stringify({ command, reason: 'Builder action from the Studio inspector.' }),
       });
       if (result.critique) setCritique(result.critique);
       await loadIdeas();
+      if (result.idea_version_id) { setSelectedId(result.idea_version_id); setActiveStage('evolve'); }
+      if (result.critique) setActiveStage('interrogate');
       await loadStages();
       setEvidence(await api<EvidenceView>(`/ideas/${selected.id}/evidence`));
       setStatus(`${command.replaceAll('_', ' ')} completed without changing the parent version.`);
@@ -253,18 +350,18 @@ export function App() {
     }
   }
 
-  async function combineWithNext() {
-    if (!selected || ideas.length < 2) return;
-    const other = ideas.find((idea) => idea.id !== selected.id);
-    if (!other) return;
+  async function combineSelected() {
+    if (!selected || !compared) return;
     setBusy(true);
     try {
-      await api(`/ideas/${selected.id}/actions`, {
+      const result = await api<{ idea_version_id: string; parent_version_ids: string[] }>(`/ideas/${selected.id}/actions`, {
         method: 'POST',
         headers: { 'idempotency-key': crypto.randomUUID() },
-        body: JSON.stringify({ command: 'combine', other_parent_version_id: other.id, reason: 'Builder combined two selected directions.' }),
+        body: JSON.stringify({ command: 'combine', other_parent_version_id: compared.id, reason: 'Builder combined two explicitly selected directions.' }),
       });
       await loadIdeas();
+      setSelectedId(result.idea_version_id);
+      setActiveStage('evolve');
       await loadStages();
       setStatus('Combined idea created with two parent edges.');
     } catch (error) {
@@ -275,7 +372,7 @@ export function App() {
   }
 
   async function createBlueprint() {
-    if (!selected) return;
+    if (!selected || activeJob) return;
     setBusy(true);
     try {
       const result = await api<{ job_id: string }>(`/ideas/${selected.id}/blueprints`, {
@@ -283,12 +380,8 @@ export function App() {
         headers: { 'idempotency-key': crypto.randomUUID() },
         body: '{}',
       });
-      const job = await api<{ result: { artifact_ids: string[] } | null }>(`/jobs/${result.job_id}`);
-      const createdId = job.result?.artifact_ids[0];
-      if (!createdId) throw new Error('Blueprint job completed without an artifact.');
-      setBlueprintId(createdId);
-      await loadStages();
-      setStatus('Blueprint created for the exact selected idea version. Review is required.');
+      setActiveJob({ id: result.job_id, kind: 'blueprint', ideaId: selected.id });
+      setStatus('Blueprint job submitted for the selected immutable version.');
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Blueprint creation failed.');
     } finally {
@@ -340,6 +433,7 @@ export function App() {
         <section className="review-shell">
           <p className="eyebrow">Understand / Review checkpoint</p>
           <h1>Correct the context before generation.</h1>
+          {mode === 'idea_first' && <div className="original-panel"><strong>Original idea, preserved exactly</strong><p>{originalIdea}</p></div>}
           <div className="review-grid">
             <label>Working summary<textarea rows={8} value={context.summary} onChange={(event) => setContext({ ...context, summary: event.target.value })} /></label>
             <div className="constraint-panel"><h2>Hard constraints</h2>{context.hard_constraints.length ? context.hard_constraints.map((item) => <p key={item.id}>{item.text}</p>) : <p>No hard constraints detected. Add them to the summary if needed.</p>}<h2>Unknowns</h2>{context.unknowns.map((item) => <p key={item}>{item}</p>)}</div>
@@ -350,19 +444,37 @@ export function App() {
       )}
 
       {screen === 'studio' && (
-        <section className="studio-shell">
-          <aside className="stage-rail" aria-label="Ideation stages"><p className="eyebrow">Workflow</p><ol>{stages.map((stage, index) => { const state = stageStates[stage.toLowerCase()]; return <li className={state || (index < 2 ? 'pending' : '')} key={stage}><span>{String(index + 1).padStart(2, '0')}</span>{stage}{state === 'blocked' ? <i>review</i> : null}</li>; })}</ol></aside>
+        <section className={`studio-shell mobile-${mobileView}`}>
+          <aside className="stage-rail" aria-label="Ideation stages"><p className="eyebrow">Workflow</p><ol>{stages.map((stage, index) => { const key = stage.toLowerCase(); const state = stageStates[key] || 'pending'; return <li className={state} key={stage}><button aria-current={activeStage === key ? 'step' : undefined} onClick={() => setActiveStage(key)} type="button"><span>{String(index + 1).padStart(2, '0')}</span><strong>{stage}</strong><small>{state}</small></button></li>; })}</ol></aside>
+          <nav className="mobile-studio-nav" aria-label="Studio panels"><button aria-current={mobileView === 'ideas' ? 'page' : undefined} onClick={() => setMobileView('ideas')} type="button">Explore ideas</button><button aria-current={mobileView === 'inspector' ? 'page' : undefined} onClick={() => setMobileView('inspector')} type="button">Inspect and act</button></nav>
           <section className="studio-canvas">
-            <div className="canvas-header"><div><p className="eyebrow">{title}</p><h1>Idea constellation</h1></div><button disabled={busy} onClick={() => void generate()} type="button">{ideas.length ? 'Generate another slate' : 'Generate diverse slate'}</button></div>
+            <div className="canvas-header"><div><p className="eyebrow">{title} / {mode === 'idea_first' ? 'Idea first' : 'Hackathon first'}</p><h1>{stages.find((stage) => stage.toLowerCase() === activeStage)}<span className="stage-state">{stageStates[activeStage] || 'pending'}</span></h1></div><button disabled={busy || Boolean(activeJob)} onClick={() => void generate()} type="button">{activeJob ? 'Job in progress' : ideas.length ? 'Generate another slate' : 'Generate diverse slate'}</button></div>
             <p className="status-line" role="status">{status}</p>
+            {activeJob && <div className="job-progress" role="status"><strong>{jobState?.status.replaceAll('_', ' ') || 'queued'}</strong><span>{jobState?.stage || 'Awaiting stage update'} {jobState?.progress.stage_index ? `${jobState.progress.stage_index} of ${jobState.progress.stage_count || 8}` : ''}</span></div>}
+            {activeStage === 'understand' && context && <div className="stage-detail"><h2>Working context</h2>{mode === 'idea_first' && <p><strong>Original words:</strong> {originalIdea}</p>}<p>{context.summary}</p><h3>Hard constraints</h3>{context.hard_constraints.length ? context.hard_constraints.map((item) => <p key={item.id}>{item.text}</p>) : <p>None confirmed in the current context.</p>}<h3>Unknowns</h3>{context.unknowns.map((item) => <p key={item}>{item}</p>)}</div>}
+            {activeStage === 'map' && <div className="stage-detail"><h2>Opportunity map</h2><p>Map output is limited to the confirmed builder context. No organizer rules or external opportunity claims have been verified.</p></div>}
+            {activeStage === 'research' && <div className="stage-detail"><h2>Research coverage</h2><p>Automated sources are disabled. Claim records below are hypotheses or builder supplied observations until independently verified.</p>{evidence?.claims.length ? evidence.claims.map((claim) => <div className="evidence-claim" key={claim.id}><strong>{claim.claim_type} / {claim.verification_status}</strong><p>{claim.claim}</p></div>) : <p>No source backed claims are attached to this version.</p>}</div>}
+            {activeStage === 'blueprint' && <div className="stage-detail"><h2>Blueprint review</h2>{blueprintText && blueprintIdeaId === selected?.id ? <><p>Bound to {selected.card.name}, version {blueprintIdeaId.slice(0, 8)}.</p><pre className="blueprint-preview">{blueprintText}</pre><a className="export-link" href={`/api/v1/blueprints/${blueprintId}/export.md`}>Export Markdown blueprint</a></> : <p>Select an idea and create a blueprint to review its stored artifact. A blueprint from another version is never shown as this version's.</p>}</div>}
+            {activeStage === 'interrogate' && <div className="stage-detail"><h2>Interrogate the selected version</h2><p>Challenge records weaknesses and assumptions without editing the version.</p>{critique ? Object.entries(critique).map(([key, values]) => <div key={key}><strong>{key.replaceAll('_', ' ')}</strong>{values.map((value) => <p key={value}>{value}</p>)}</div>) : <p>Choose Challenge in the inspector to record a critique.</p>}</div>}
+            {activeStage === 'converge' && <div className="stage-detail"><h2>Compare two chosen directions</h2><p>Choose a second version in the inspector. Comparison uses stored card text, not an originality score.</p>{selected && compared && <div className="comparison-grid">{[selected, compared].map((idea) => <article key={idea.id}><h3>{idea.card.name}</h3><p><strong>Beneficiary:</strong> {idea.card.target_user}</p><p><strong>Problem:</strong> {idea.card.problem}</p><p><strong>Mechanism:</strong> {idea.card.mechanism}</p><p><strong>Demo:</strong> {idea.card.demo_moment}</p><p><strong>Dependencies:</strong> {idea.card.dependencies?.join(', ') || 'Not specified'}</p><p><strong>Unknowns:</strong> {idea.card.unknowns?.join(', ') || 'Not specified'}</p></article>)}</div>}</div>}
             {!ideas.length ? <div className="empty-canvas"><span>09</span><h2>Nine strategies are ready.</h2><p>Confirming context does not generate anything. Start the deterministic local run when you are ready.</p></div> : (
-              <div className="idea-grid" role="list" aria-label="Generated ideas">{ideas.map((idea) => <button className={selected?.id === idea.id ? 'idea-card selected' : 'idea-card'} key={idea.id} onClick={() => { setSelectedId(idea.id); setCritique(null); }} role="listitem" type="button"><small>{idea.strategy.replaceAll('_', ' ')} {idea.pinned ? '/ pinned' : ''}</small><strong>{idea.card.name}</strong><span>{idea.card.one_liner}</span><em>{idea.visibility}</em></button>)}</div>
+              <div className="idea-grid" role="list" aria-label="Generated ideas">{ideas.map((idea) => <button className={selected?.id === idea.id ? 'idea-card selected' : 'idea-card'} key={idea.id} onClick={() => { setSelectedId(idea.id); setCritique(null); setMobileView('inspector'); }} role="listitem" type="button"><small>{idea.strategy.replaceAll('_', ' ')} {idea.pinned ? '/ pinned' : ''}</small><strong>{idea.card.name}</strong><span>{idea.card.one_liner}</span><em>{idea.visibility}</em></button>)}</div>
             )}
-            {edges.length > 0 && <details className="lineage"><summary>Immutable lineage ({edges.length} edges)</summary><ul>{edges.map((edge) => <li key={`${edge.child_version_id}:${edge.parent_version_id}`}>{edge.edge_kind}: {edge.parent_version_id.slice(0, 8)} to {edge.child_version_id.slice(0, 8)}</li>)}</ul></details>}
+            {edges.length > 0 && <details className="lineage" open={activeStage === 'evolve'}><summary>Immutable lineage ({edges.length} edges)</summary><ul>{edges.map((edge) => <li key={`${edge.child_version_id}:${edge.parent_version_id}`}>{ideas.find((idea) => idea.id === edge.parent_version_id)?.card.name || 'Original version'} to {ideas.find((idea) => idea.id === edge.child_version_id)?.card.name || 'Child version'} ({edge.edge_kind})</li>)}</ul></details>}
           </section>
           <aside className="inspector">
             <p className="eyebrow">Selected version</p>
-            {selected ? <><h2>{selected.card.name}</h2><p>{selected.card.problem}</p><dl><dt>Target</dt><dd>{selected.card.target_user}</dd><dt>Mechanism</dt><dd>{selected.card.mechanism}</dd><dt>Evidence</dt><dd>{evidence?.coverage || selected.card.evidence_status}. {evidence?.claims.length ? `${evidence.claims.length} claim records.` : 'No external sources attached.'}</dd><dt>Version</dt><dd>{selected.id}</dd></dl><div className="action-stack">{actionCommands.map((action) => <button disabled={busy} key={action.command} onClick={() => void runAction(action.command)} type="button">{action.label}</button>)}<button disabled={busy || ideas.length < 2} onClick={() => void combineWithNext()} type="button">Combine with another</button><button className="primary" disabled={busy} onClick={() => void createBlueprint()} type="button">Create blueprint</button></div>{ideas.length > 1 && <details className="comparison"><summary>Compare with another idea</summary><dl><dt>Current mechanism</dt><dd>{selected.card.mechanism}</dd><dt>Alternative mechanism</dt><dd>{ideas.find((idea) => idea.id !== selected.id)?.card.mechanism}</dd></dl></details>}{critique && <div className="critique"><h3>Critique</h3>{Object.entries(critique).map(([key, values]) => <div key={key}><strong>{key.replaceAll('_', ' ')}</strong>{values.map((value) => <p key={value}>{value}</p>)}</div>)}</div>}{evidence?.claims.map((claim) => <div className="evidence-claim" key={claim.id}><strong>{claim.claim_type} / {claim.verification_status}</strong><p>{claim.claim}</p></div>)}{blueprintId && <a className="export-link" href={`/api/v1/blueprints/${blueprintId}/export.md`}>Export Markdown blueprint</a>}</> : <p>Select an idea to inspect it.</p>}
+            {selected ? <>
+              <h2>{selected.card.name}</h2>
+              <p>{selected.card.problem}</p>
+              <dl><dt>Beneficiary</dt><dd>{selected.card.target_user}</dd><dt>Mechanism</dt><dd>{selected.card.mechanism}</dd><dt>Why this direction</dt><dd>{selected.card.underexplored_insight}</dd><dt>Demo moment</dt><dd>{selected.card.demo_moment}</dd><dt>Evidence</dt><dd>{evidence?.coverage || selected.card.evidence_status}. {evidence?.claims.length ? `${evidence.claims.length} claim records.` : 'No external sources attached.'}</dd><dt>Version</dt><dd>{selected.id.slice(0, 8)} (immutable)</dd></dl>
+              <label className="compare-picker">Second version for comparison or combination<select aria-label="Second idea" value={compared?.id || ''} onChange={(event) => setCompareId(event.target.value)}><option value="">Choose a distinct version</option>{ideas.filter((idea) => idea.id !== selected.id).map((idea) => <option key={idea.id} value={idea.id}>{idea.card.name} ({idea.strategy.replaceAll('_', ' ')})</option>)}</select></label>
+              <div className="action-stack">{actionCommands.map((action) => <button disabled={busy || Boolean(activeJob)} key={action.command} onClick={() => void runAction(action.command)} type="button">{action.label}</button>)}<button disabled={busy || Boolean(activeJob) || !compared} onClick={() => void combineSelected()} type="button">Combine selected versions</button><button className="primary" disabled={busy || Boolean(activeJob)} onClick={() => void createBlueprint()} type="button">Create blueprint</button></div>
+              <p className="action-note">Branching keeps the parent. Challenge records critique. Combining creates a child with two parents. Pin and reject change only workspace decisions.</p>
+              {compared && <button className="compare-link" onClick={() => setActiveStage('converge')} type="button">Compare {selected.card.name} with {compared.card.name}</button>}
+              {critique && <div className="critique"><h3>Critique</h3>{Object.entries(critique).map(([key, values]) => <div key={key}><strong>{key.replaceAll('_', ' ')}</strong>{values.map((value) => <p key={value}>{value}</p>)}</div>)}</div>}
+              {blueprintId && blueprintIdeaId === selected.id && <button className="compare-link" onClick={() => setActiveStage('blueprint')} type="button">Review stored blueprint</button>}
+            </> : <p>Select an idea to inspect it.</p>}
           </aside>
         </section>
       )}
