@@ -1,0 +1,68 @@
+{
+  "viewport": 1440,
+  "nodes": [
+    {
+      "id": "neglected actor / 4f076d53Backstage Sign",
+      "left": 486.796875,
+      "top": 329.96875,
+      "right": 704.796875,
+      "bottom": 499.96875
+    },
+    {
+      "id": "constraint inversion / 80a3b513Constrain",
+      "left": 736.796875,
+      "top": 329.96875,
+      "right": 954.796875,
+      "bottom": 499.96875
+    },
+    {
+      "id": "cross domain transfer / 97fc3632Borrowed",
+      "left": 986.796875,
+      "top": 329.96875,
+      "right": 1204.796875,
+      "bottom": 499.96875
+    },
+    {
+      "id": "negative space / 310cdf9aMissing Step: t",
+      "left": 486.796875,
+      "top": 519.96875,
+      "right": 704.796875,
+      "bottom": 689.96875
+    },
+    {
+      "id": "second order / b435d347Ripple Ledger: th",
+      "left": 736.796875,
+      "top": 519.96875,
+      "right": 954.796875,
+      "bottom": 689.96875
+    },
+    {
+      "id": "failure first / 909b9824Preflight Failur",
+      "left": 986.796875,
+      "top": 519.96875,
+      "right": 1204.796875,
+      "bottom": 689.96875
+    },
+    {
+      "id": "counterfactual / 6b870045No Default: the",
+      "left": 486.796875,
+      "top": 709.96875,
+      "right": 704.796875,
+      "bottom": 879.96875
+    },
+    {
+      "id": "low resource / 68075e15Pocket Infrastruc",
+      "left": 736.796875,
+      "top": 709.96875,
+      "right": 954.796875,
+      "bottom": 879.96875
+    },
+    {
+      "id": "institutional bottleneck / 40b27cf8Appro",
+      "left": 986.796875,
+      "top": 709.96875,
+      "right": 1204.796875,
+      "bottom": 879.96875
+    }
+  ]
+}

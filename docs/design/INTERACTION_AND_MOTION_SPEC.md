@@ -6,3 +6,5 @@
 - Parent edges come only from the stored lineage array. Unlinked initial versions connect to a labeled origin. A two-parent child draws both edges. The selected edge is emphasized.
 - List selection uses the same handler and includes the strategy, name, summary, and lineage state. At small widths, Explore and Inspect remain explicit panel choices; List is always available.
 - Existing branch, combine, critique, blueprint, polling, autosave, and conflict handlers remain connected to the original API.
+
+Gate 1 browser evidence: `docs/evidence/m2d/interaction.webm` records selection, List switching, branching, and combination. The graph scrolls the selected version into view, and the inspector names each stored parent with a button that selects it. The reduced-motion test now requires `animation-name: none` for the orbital group.

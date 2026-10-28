@@ -21,7 +21,7 @@ test('desktop continuity restores a draft and reopens exact blueprint history', 
     await resumed.screenshot({ path: 'docs/evidence/continuity-desktop-restored-draft.png' });
     await resumed.getByRole('button', { name: 'Confirm context and enter Studio' }).click();
     await resumed.getByRole('button', { name: 'Generate diverse slate' }).click();
-    await page.getByRole('button', { name: 'List view' }).click();
+    await resumed.getByRole('button', { name: 'List view' }).click();
     await expect(resumed.getByRole('list', { name: 'Generated ideas' }).getByRole('listitem')).toHaveCount(9);
     await resumed.locator('.stage-rail').getByRole('button', { name: /Map/ }).click();
     await expect(resumed.locator('.opportunity-card')).toHaveCount(3);

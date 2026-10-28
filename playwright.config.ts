@@ -11,7 +11,10 @@ export default defineConfig({
   reporter: process.env.CI ? 'github' : 'list',
   use: {
     baseURL: `http://127.0.0.1:${localPort}`,
-    channel: process.env.CI ? undefined : 'chrome',
+    channel: process.env.CI || process.env.HACKTOR_BROWSER_EXECUTABLE ? undefined : 'chrome',
+    launchOptions: process.env.HACKTOR_BROWSER_EXECUTABLE
+      ? { executablePath: process.env.HACKTOR_BROWSER_EXECUTABLE, args: ['--no-sandbox', '--disable-dev-shm-usage'] }
+      : undefined,
     colorScheme: 'dark',
     trace: 'retain-on-failure',
   },
@@ -28,3 +31,4 @@ export default defineConfig({
     timeout: 120_000,
   },
 });
+

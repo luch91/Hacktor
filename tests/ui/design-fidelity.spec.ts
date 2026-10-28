@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('desktop fidelity slice uses stored lineage in constellation and equivalent list selection', async ({ page }, testInfo) => {
+test('desktop hackathon fidelity slice uses stored lineage in constellation and equivalent list selection', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'Desktop lineage check');
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Go beyond the first idea.' })).toBeVisible();
@@ -13,6 +13,12 @@ test('desktop fidelity slice uses stored lineage in constellation and equivalent
   await page.getByRole('button', { name: 'Generate diverse slate' }).click();
   const nodes = page.locator('.graph-node');
   await expect(nodes).toHaveCount(9);
+  const overlaps = await nodes.evaluateAll((items) => items.flatMap((item, index) => items.slice(index + 1).filter((other) => {
+    const a = item.getBoundingClientRect();
+    const b = other.getBoundingClientRect();
+    return a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+  })));
+  expect(overlaps).toHaveLength(0);
   const second = nodes.nth(1);
   const secondName = await second.locator('strong').textContent();
   await second.focus();
@@ -30,13 +36,20 @@ test('desktop fidelity slice uses stored lineage in constellation and equivalent
   await page.getByRole('button', { name: 'Combine selected versions' }).click();
   await expect(nodes).toHaveCount(11);
   await expect(page.locator('.graph-line.active')).toHaveCount(2);
+  await expect(page.locator('.inspector .parent-link')).toHaveCount(2);
+  const selectedVisible = await page.locator('.graph-node.selected').evaluate((node) => {
+    const selected = node.getBoundingClientRect();
+    const viewport = node.closest('.constellation-scroll')?.getBoundingClientRect();
+    return Boolean(viewport && selected.left >= viewport.left && selected.right <= viewport.right);
+  });
+  expect(selectedVisible).toBe(true);
 });
 
-test('landing has a reduced-motion orbital and no page overflow', async ({ page }, testInfo) => {
+test('required compact landing has a reduced-motion orbital and no page overflow', async ({ page }, testInfo) => {
   test.skip(!['desktop', 'mobile-320', 'tablet'].includes(testInfo.project.name), 'Viewport check');
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
-  await expect(page.locator('.orbit-ring')).toHaveCSS('animation-duration', '1e-05s');
+  await expect(page.locator('.orbit-ring')).toHaveCSS('animation-name', 'none');
   for (const mode of ['dark', 'light']) {
     await page.getByRole('radio', { name: mode }).check();
     await expect(page.locator('html')).toHaveAttribute('data-theme', mode);

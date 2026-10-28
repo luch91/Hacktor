@@ -15,3 +15,7 @@ Status: Gate 0 inventory, 28 October 2026. The owner rejected the existing landi
 | Existing frontend and tests | Available | API and workflow semantics, persisted idea IDs and edges | Visual implementation is rejected and is not treated as a design reference |
 
 Selected direction: original editorial orbital language on the specified dark foundation, with a legible information hierarchy and accessible product controls. The landing and Studio are the Gate 1 vertical slice. Intake, all stage-specific compositions, blueprint document refinement, and comprehensive responsive visual QA await explicit owner visual approval.
+
+## Evidence recovery update
+
+The XDesign PDF and Cattleya video were rendered and placed beside actual Hacktor browser captures in `docs/evidence/m2d/`. The owner's newly named `Hacktor_Design_Reference_Pack_COMPLETE.zip` is not in the attached workspace or searchable Library files. The supplied Windows path `C:\Users\user\Downloads\Hacktor_Master_Agent_Handoff_v1_0` is not mounted in this Linux execution workspace. The master handoff, full design system, UX specification, and both HTML previews therefore remain unavailable for direct reading or rendering. This is an unresolved reference fidelity limit; it does not negate the available PDF/video comparison.
