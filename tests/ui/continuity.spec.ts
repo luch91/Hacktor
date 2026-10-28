@@ -21,6 +21,7 @@ test('desktop continuity restores a draft and reopens exact blueprint history', 
     await resumed.screenshot({ path: 'docs/evidence/continuity-desktop-restored-draft.png' });
     await resumed.getByRole('button', { name: 'Confirm context and enter Studio' }).click();
     await resumed.getByRole('button', { name: 'Generate diverse slate' }).click();
+    await page.getByRole('button', { name: 'List view' }).click();
     await expect(resumed.getByRole('list', { name: 'Generated ideas' }).getByRole('listitem')).toHaveCount(9);
     await resumed.locator('.stage-rail').getByRole('button', { name: /Map/ }).click();
     await expect(resumed.locator('.opportunity-card')).toHaveCount(3);
@@ -98,13 +99,16 @@ test('mobile continuity preserves idea decisions after refresh', async ({ page }
   await expect(page.getByLabel('Working summary')).toHaveValue(`${original} No account needed.`);
   await page.getByRole('button', { name: 'Confirm context and enter Studio' }).click();
   await page.getByRole('button', { name: 'Generate diverse slate' }).click();
+  await page.getByRole('button', { name: 'List view' }).click();
   await expect(page.getByRole('list', { name: 'Generated ideas' }).getByRole('listitem')).toHaveCount(9);
   await page.getByRole('button', { name: 'Inspect and act' }).click();
   await page.getByRole('button', { name: 'Pin', exact: true }).click();
   await page.getByRole('button', { name: 'Reject', exact: true }).click();
   await page.reload();
   await page.getByRole('button', { name: 'Explore ideas' }).click();
+  await page.getByRole('button', { name: 'List view' }).click();
   await expect(page.getByRole('list', { name: 'Generated ideas' }).getByRole('listitem').first()).toContainText('pinned');
+  await page.getByRole('button', { name: 'List view' }).click();
   await expect(page.getByRole('list', { name: 'Generated ideas' }).getByRole('listitem').first()).toContainText('rejected');
   await page.screenshot({ path: 'docs/evidence/continuity-mobile-restored-studio.png' });
 });
@@ -120,6 +124,7 @@ test('required compact continuity reflows saved review and Map', async ({ page }
   await page.screenshot({ path: `docs/evidence/continuity-${testInfo.project.name}-saved-draft.png` });
   await page.getByRole('button', { name: 'Confirm context and enter Studio' }).click();
   await page.getByRole('button', { name: 'Generate diverse slate' }).click();
+  await page.getByRole('button', { name: 'List view' }).click();
   await expect(page.getByRole('list', { name: 'Generated ideas' }).getByRole('listitem')).toHaveCount(9);
   await page.locator('.stage-rail').getByRole('button', { name: /Map/ }).click();
   await expect(page.locator('.opportunity-card')).toHaveCount(3);
@@ -152,9 +157,10 @@ test('desktop continuity accessibility checks focus, status, contrast and reduce
   await page.getByRole('radio', { name: 'light' }).check();
   await expect.poll(measureContrast).toBeGreaterThanOrEqual(4.5);
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  const motion = await page.locator('.entry-grid button').first().evaluate((element) => getComputedStyle(element).transitionDuration);
+  const motion = await page.locator('.entry-paths button').first().evaluate((element) => getComputedStyle(element).transitionDuration);
   expect(motion).toContain('1e-05s');
   await page.getByRole('button', { name: /Start with a hackathon/ }).click();
   await expect(page.getByLabel('Workspace title')).toBeVisible();
   await expect(page.getByLabel('Hackathon brief')).toBeVisible();
 });
+
