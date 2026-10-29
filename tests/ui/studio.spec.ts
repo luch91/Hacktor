@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 test('desktop hackathon-first journey reaches a diverse interactive Studio', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'Desktop evidence only');
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: /Find the idea beneath/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Go beyond the first idea/ })).toBeVisible();
   await page.screenshot({ path: 'docs/evidence/m2-desktop-landing.png', fullPage: true });
   await page.getByRole('radio', { name: 'light' }).check();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
@@ -20,6 +20,7 @@ test('desktop hackathon-first journey reaches a diverse interactive Studio', asy
   await expect(page.getByRole('heading', { name: 'Correct the context before generation.' })).toBeVisible();
   await page.getByRole('button', { name: 'Confirm context and enter Studio' }).click();
   await page.getByRole('button', { name: 'Generate diverse slate' }).click();
+  await page.getByRole('button', { name: 'List view' }).click();
   const ideas = page.getByRole('list', { name: 'Generated ideas' }).getByRole('listitem');
   await expect(ideas).toHaveCount(9);
   await page.screenshot({ path: 'docs/evidence/m2-desktop-studio.png', fullPage: true });
@@ -64,6 +65,7 @@ test('mobile idea-first journey preserves the original and remains operable', as
   await expect(page.getByText(original, { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Confirm context and enter Studio' }).click();
   await page.getByRole('button', { name: 'Generate diverse slate' }).click();
+  await page.getByRole('button', { name: 'List view' }).click();
   await expect(page.getByRole('list', { name: 'Generated ideas' }).getByRole('listitem')).toHaveCount(9);
   await expect(page.locator('body')).toHaveCSS('min-width', '320px');
   await page.screenshot({ path: 'docs/evidence/m2-mobile-studio.png' });
@@ -95,6 +97,7 @@ test('desktop hackathon job resumes after an interrupted status response', async
   await page.getByRole('button', { name: 'Generate diverse slate' }).click();
   await expect(page.getByText(/Connection interrupted/)).toBeVisible();
   await page.reload();
+  await page.getByRole('button', { name: 'List view' }).click();
   await expect(page.getByRole('list', { name: 'Generated ideas' }).getByRole('listitem')).toHaveCount(9);
   expect(submissions).toBe(1);
 });
@@ -115,8 +118,10 @@ test('required compact breakpoints avoid page-level horizontal overflow', async 
   await page.getByRole('button', { name: 'Review context' }).click();
   await page.getByRole('button', { name: 'Confirm context and enter Studio' }).click();
   await page.getByRole('button', { name: 'Generate diverse slate' }).click();
+  await page.getByRole('button', { name: 'List view' }).click();
   await expect(page.getByRole('list', { name: 'Generated ideas' }).getByRole('listitem')).toHaveCount(9);
   await page.screenshot({ path: `docs/evidence/m2-${testInfo.project.name}-studio.png` });
   const studioWidth = await page.evaluate(() => ({ client_width: document.documentElement.clientWidth, scroll_width: document.documentElement.scrollWidth }));
   expect(studioWidth.scroll_width).toBeLessThanOrEqual(studioWidth.client_width);
 });
+

@@ -1,3 +1,5 @@
+import { IdeaConstellation } from './IdeaConstellation';
+import { MotionSequence } from './MotionSequence';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import type { BlueprintRecord, BlueprintSummary, IdeaCardV1, IdeaCommand, OpportunityHypothesis, SessionContext, SessionContextDraft } from '@hacktor/contracts';
 
@@ -121,6 +123,7 @@ export function App() {
   const [blueprintIdeaId, setBlueprintIdeaId] = useState('');
   const [originalIdea, setOriginalIdea] = useState('');
   const [mobileView, setMobileView] = useState<'ideas' | 'inspector'>('ideas');
+  const [exploreView, setExploreView] = useState<'map' | 'list'>('map');
   const [draftSaveState, setDraftSaveState] = useState<DraftSaveState>('idle');
   const [draftRevision, setDraftRevision] = useState(0);
   const draftRevisionRef = useRef(0);
@@ -551,8 +554,14 @@ export function App() {
   return (
     <main>
       <header className="site-header">
-        <button className="wordmark plain-button" onClick={() => setScreen('landing')} type="button" aria-label="Hacktor home">hacktor<span>.</span></button>
-        <p className="header-mode">Deep Ideation Studio</p>
+        <button className="wordmark plain-button" onClick={() => setScreen('landing')} type="button" aria-label="Hacktor home">hacktor<span>✳</span></button>
+        <nav className="global-nav" aria-label="Primary navigation">
+          <button onClick={() => setScreen('landing')} type="button">Overview</button>
+          <button onClick={() => screen === 'studio' ? setActiveStage('map') : document.getElementById('process')?.scrollIntoView()} type="button">Discover</button>
+          <button onClick={() => sessionId && setScreen(context?.confirmed ? 'studio' : 'review')} disabled={!sessionId} type="button">Studio</button>
+          <button onClick={() => sessionId && setScreen(context?.confirmed ? 'studio' : 'review')} disabled={!sessionId} type="button">Workspace</button>
+          <button onClick={() => { if (sessionId && context?.confirmed) { setScreen('studio'); setActiveStage('blueprint'); } }} disabled={!sessionId || !context?.confirmed} type="button">Blueprints</button>
+        </nav>
         <fieldset className="theme-picker">
           <legend>Appearance</legend>
           {(['dark', 'light', 'system'] as const).map((value) => (
@@ -562,18 +571,22 @@ export function App() {
       </header>
 
       {screen === 'landing' && (
-        <section className="hero" id="top">
-          <p className="eyebrow">Deep Ideation Studio</p>
-          <h1>Find the idea beneath the <span>obvious one.</span></h1>
-          <p className="hero-copy">Map overlooked problems, generate nine structurally different directions, challenge assumptions, preserve every branch, and turn one exact version into a build-ready blueprint.</p>
+        <div className="landing-page" id="top">
+          <section className="editorial-hero" aria-labelledby="hero-title">
+            <div className="hero-intro"><p className="eyebrow">A DEEP IDEATION STUDIO / 001</p><span>From first thought to buildable direction</span></div>
+            <div className="hero-composition">
+              <div className="hero-message"><h1 id="hero-title">Go beyond<br /><em>the first idea.</em></h1><p className="hero-copy">Hacktor opens up a challenge, finds distinct directions, and traces every decision to a blueprint you can build.</p><button className="hero-cta" onClick={() => document.getElementById('entry-paths')?.scrollIntoView()} type="button">Begin exploring <span aria-hidden="true">↗</span></button></div>
+              <div className="hero-art" aria-label="Original orbital drawing of an idea branching into connected directions" role="img"><svg viewBox="0 0 680 620" aria-hidden="true"><defs><linearGradient id="orbit-ink" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#C386FF"/><stop offset="0.55" stopColor="#6B407E"/><stop offset="1" stopColor="#D5A9FF"/></linearGradient></defs><g className="orbit-ring"><ellipse cx="342" cy="310" rx="235" ry="182" transform="rotate(-24 342 310)"/><ellipse cx="342" cy="310" rx="235" ry="182" transform="rotate(36 342 310)"/><ellipse cx="342" cy="310" rx="178" ry="241" transform="rotate(28 342 310)"/></g><g className="orbit-links"><path d="M342 310 L155 185 M342 310 L506 157 M342 310 L551 397 M342 310 L240 510 M342 310 L90 384"/></g><circle className="orbit-core" cx="342" cy="310" r="65"/><circle className="orbit-point" cx="155" cy="185" r="10"/><circle className="orbit-point" cx="506" cy="157" r="8"/><circle className="orbit-point" cx="551" cy="397" r="12"/><circle className="orbit-point" cx="240" cy="510" r="7"/><circle className="orbit-point" cx="90" cy="384" r="9"/><text x="342" y="316" textAnchor="middle">IDEA / 01</text><text x="118" y="164">EXPLORE</text><text x="505" y="132">EVOLVE</text><text x="525" y="438">BUILD</text></svg><div className="art-coordinate">FIG. 01 <span>THOUGHTS BECOME SYSTEMS</span></div></div>
+            </div>
+            <div className="hero-footer"><span>01 / INTERPRET</span><span>02 / DIVERGE</span><span>03 / BUILD</span><a href="#process">Explore the process ↓</a></div>
+          </section>
+          <section className="process-section" id="process"><div className="section-caption"><span>THE METHOD</span><span>THREE MOVEMENTS / ONE CONTINUOUS THREAD</span></div><h2>Ideas deserve<br /><em>more room to move.</em></h2><div className="process-steps"><article><small>01 / UNDERSTAND</small><h3>Interpret the challenge.</h3><p>Shape the brief or original thought into a context you can check and confirm.</p></article><article><small>02 / EXPLORE</small><h3>Follow the uncommon paths.</h3><p>Compare nine distinct strategies, question assumptions, and preserve each branch.</p></article><article><small>03 / MAKE</small><h3>Choose what to build.</h3><p>Turn one exact immutable idea version into a technical blueprint.</p></article></div></section>
+          <MotionSequence />
+          <section className="entry-section" id="entry-paths"><div><p className="eyebrow">YOUR STARTING POINT</p><h2>Every direction<br />starts somewhere.</h2><p>Choose the material you already have. Both paths lead into the same Studio.</p></div><div className="entry-paths"><button onClick={() => begin('hackathon_first')} type="button"><small>01 / A CHALLENGE IN HAND</small><strong>Start with a hackathon</strong><span>Bring the brief. Review what is known before exploring directions.</span><b aria-hidden="true">↗</b></button><button onClick={() => begin('idea_first')} type="button"><small>02 / A THOUGHT TO EXPLORE</small><strong>Start with an idea</strong><span>Keep your original wording intact while the idea evolves.</span><b aria-hidden="true">↗</b></button></div></section>
           {sessionId && <div className="continuity-card"><strong>Continue {title}</strong><p>{context?.confirmed ? activeJob ? 'A job is still in progress.' : ideas.length ? 'Return to your ideas and stored artifacts.' : 'Context confirmed. Ready to explore.' : 'Your context review is unfinished.'}</p><button onClick={() => setScreen(context?.confirmed ? 'studio' : 'review')} type="button">Continue current workspace</button><small>Starting a new guest workspace replaces access to this one in this browser.</small></div>}
           {restorationStatus && <p className="status-line" role="status">{restorationStatus}</p>}
-          <div className="entry-grid">
-            <button onClick={() => begin('hackathon_first')} type="button"><small>01 / Brief-led</small><strong>Start with a hackathon</strong><span>Paste the official brief, review constraints, then explore.</span></button>
-            <button onClick={() => begin('idea_first')} type="button"><small>02 / Idea-led</small><strong>Start with an idea</strong><span>Keep your original words intact, then branch beyond them.</span></button>
-          </div>
-          <p className="notice" role="status">Local M1 demonstration uses a deterministic test adapter. Live AI and automated research sources remain disabled.</p>
-        </section>
+          <p className="landing-disclosure">Local deterministic generation. Live AI and automated research sources are disabled.</p>
+        </div>
       )}
 
       {screen === 'intake' && (
@@ -607,7 +620,7 @@ export function App() {
 
       {screen === 'studio' && (
         <section className={`studio-shell mobile-${mobileView}`}>
-          <aside className="stage-rail" aria-label="Ideation stages"><p className="eyebrow">Workflow</p><ol>{stages.map((stage, index) => { const key = stage.toLowerCase(); const state = stageStates[key] || 'pending'; return <li className={state} key={stage}><button aria-current={activeStage === key ? 'step' : undefined} onClick={() => setActiveStage(key)} type="button"><span>{String(index + 1).padStart(2, '0')}</span><strong>{stage}</strong><small>{state}</small></button></li>; })}</ol></aside>
+          <aside className="stage-rail" aria-label="Ideation stages"><p className="eyebrow">YOUR CONTEXT</p><div className="rail-context"><strong>{title}</strong><p>{mode === 'idea_first' ? originalIdea : context?.summary}</p><small>{context?.hard_constraints.length || 0} confirmed constraints / {opportunities.length} unverified opportunities</small></div><p className="eyebrow">Workflow</p><ol>{stages.map((stage, index) => { const key = stage.toLowerCase(); const state = stageStates[key] || 'pending'; return <li className={state} key={stage}><button aria-current={activeStage === key ? 'step' : undefined} onClick={() => setActiveStage(key)} type="button"><span>{String(index + 1).padStart(2, '0')}</span><strong>{stage}</strong><small>{state}</small></button></li>; })}</ol></aside>
           <nav className="mobile-studio-nav" aria-label="Studio panels"><button aria-current={mobileView === 'ideas' ? 'page' : undefined} onClick={() => setMobileView('ideas')} type="button">Explore ideas</button><button aria-current={mobileView === 'inspector' ? 'page' : undefined} onClick={() => setMobileView('inspector')} type="button">Inspect and act</button></nav>
           <section className="studio-canvas">
             <div className="canvas-header"><div><p className="eyebrow">{title} / {mode === 'idea_first' ? 'Idea first' : 'Hackathon first'}</p><h1>{stages.find((stage) => stage.toLowerCase() === activeStage)}<span className="stage-state">{stageStates[activeStage] || 'pending'}</span></h1></div><button disabled={busy || Boolean(activeJob)} onClick={() => void generate()} type="button">{activeJob ? 'Job in progress' : ideas.length ? 'Generate another slate' : 'Generate diverse slate'}</button></div>
@@ -620,9 +633,8 @@ export function App() {
             {activeStage === 'blueprint' && <div className="stage-detail"><h2>Blueprint review</h2><p>Selected idea: {selected?.card.name || 'None'}, version {selected?.id.slice(0, 8) || 'none'}. Each artifact belongs to this exact immutable version.</p><h3>Stored blueprint history</h3>{selectedBlueprints.length ? <ul className="blueprint-history">{selectedBlueprints.map((item) => <li key={item.id}><button aria-current={blueprintId === item.id ? 'true' : undefined} onClick={() => void openBlueprint(item.id)} type="button">Blueprint {item.id.slice(0, 8)} / version {item.version} / {item.created_at}</button></li>)}</ul> : <p>No stored blueprint exists for this version. Create one using the selected version in the inspector.</p>}{blueprintText && blueprintIdeaId === selected?.id && <><div className="blueprint-toolbar"><span>Opened artifact {blueprintId.slice(0, 8)}</span><button onClick={() => setActiveStage('diverge')} type="button">Return to selected idea</button><a href={`/api/v1/blueprints/${blueprintId}/export.md`}>Export Markdown blueprint</a></div><BlueprintDocument markdown={blueprintText} /></>}</div>}
             {activeStage === 'interrogate' && <div className="stage-detail"><h2>Interrogate the selected version</h2><p>Challenge records weaknesses and assumptions without editing the version.</p>{critique ? Object.entries(critique).map(([key, values]) => <div key={key}><strong>{key.replaceAll('_', ' ')}</strong>{values.map((value) => <p key={value}>{value}</p>)}</div>) : <p>Choose Challenge in the inspector to record a critique.</p>}</div>}
             {activeStage === 'converge' && <div className="stage-detail"><h2>Compare two chosen directions</h2><p>Choose a second version in the inspector. Comparison uses stored card text, not an originality score.</p>{selected && compared && <div className="comparison-grid">{[selected, compared].map((idea) => <article key={idea.id}><h3>{idea.card.name}</h3><p><strong>Beneficiary:</strong> {idea.card.target_user}</p><p><strong>Problem:</strong> {idea.card.problem}</p><p><strong>Mechanism:</strong> {idea.card.mechanism}</p><p><strong>Demo:</strong> {idea.card.demo_moment}</p><p><strong>Dependencies:</strong> {idea.card.dependencies?.join(', ') || 'Not specified'}</p><p><strong>Unknowns:</strong> {idea.card.unknowns?.join(', ') || 'Not specified'}</p></article>)}</div>}</div>}
-            {!ideas.length ? <div className="empty-canvas"><span>09</span><h2>Nine strategies are ready.</h2><p>Confirming context does not generate anything. Start the deterministic local run when you are ready.</p></div> : (
-              <div className="idea-grid" role="list" aria-label="Generated ideas">{ideas.map((idea) => <button className={selected?.id === idea.id ? 'idea-card selected' : 'idea-card'} key={idea.id} onClick={() => { setSelectedId(idea.id); setCritique(null); setMobileView('inspector'); }} role="listitem" type="button"><small>{idea.strategy.replaceAll('_', ' ')} {idea.pinned ? '/ pinned' : ''}</small><strong>{idea.card.name}</strong><span>{idea.card.one_liner}</span><em>{idea.visibility}</em></button>)}</div>
-            )}
+            <div className="exploration-heading"><div><p className="eyebrow">IDEA EXPLORATION / {ideas.length} VERSIONS</p><h2>Direction field</h2></div><div className="view-switch" role="group" aria-label="Idea view"><button aria-pressed={exploreView === 'map'} onClick={() => setExploreView('map')} type="button">Constellation</button><button aria-pressed={exploreView === 'list'} onClick={() => setExploreView('list')} type="button">List view</button></div></div>
+            {!ideas.length ? <div className="empty-canvas"><span>09</span><h2>Nine strategies are ready.</h2><p>Confirming context does not generate anything. Start the deterministic local run when you are ready.</p></div> : exploreView === 'map' ? <IdeaConstellation ideas={ideas} edges={edges} selectedId={selected?.id || ''} origin={mode === 'idea_first' ? originalIdea : context?.summary || title} onSelect={(id) => { setSelectedId(id); setCritique(null); setMobileView('inspector'); }} /> : <div className="idea-list" role="list" aria-label="Generated ideas">{ideas.map((idea) => <button className={selected?.id === idea.id ? 'idea-list-row selected' : 'idea-list-row'} key={idea.id} onClick={() => { setSelectedId(idea.id); setCritique(null); setMobileView('inspector'); }} role="listitem" type="button"><small>{idea.strategy.replaceAll('_', ' ')} / {idea.id.slice(0, 8)}</small><strong>{idea.card.name}</strong><span>{idea.card.one_liner}</span><em>{edges.filter((edge) => edge.child_version_id === idea.id).length === 2 ? 'Combined from two versions' : edges.some((edge) => edge.child_version_id === idea.id) ? 'Derived version' : 'Initial direction'} {idea.pinned ? '/ pinned' : ''} / {idea.visibility}</em></button>)}</div>}
             {edges.length > 0 && <details className="lineage" open={activeStage === 'evolve'}><summary>Immutable lineage ({edges.length} edges)</summary><ul>{edges.map((edge) => <li key={`${edge.child_version_id}:${edge.parent_version_id}`}>{ideas.find((idea) => idea.id === edge.parent_version_id)?.card.name || 'Original version'} to {ideas.find((idea) => idea.id === edge.child_version_id)?.card.name || 'Child version'} ({edge.edge_kind})</li>)}</ul></details>}
           </section>
           <aside className="inspector">
@@ -630,7 +642,7 @@ export function App() {
             {selected ? <>
               <h2>{selected.card.name}</h2>
               <p>{selected.card.problem}</p>
-              <dl><dt>Beneficiary</dt><dd>{selected.card.target_user}</dd><dt>Mechanism</dt><dd>{selected.card.mechanism}</dd><dt>Why this direction</dt><dd>{selected.card.underexplored_insight}</dd><dt>Demo moment</dt><dd>{selected.card.demo_moment}</dd><dt>Evidence</dt><dd>{evidence?.coverage || selected.card.evidence_status}. {evidence?.claims.length ? `${evidence.claims.length} claim records.` : 'No external sources attached.'}</dd><dt>Version</dt><dd>{selected.id.slice(0, 8)} (immutable)</dd></dl>
+              <dl><dt>Beneficiary</dt><dd>{selected.card.target_user}</dd><dt>Mechanism</dt><dd>{selected.card.mechanism}</dd><dt>Why this direction</dt><dd>{selected.card.underexplored_insight}</dd><dt>Demo moment</dt><dd>{selected.card.demo_moment}</dd><dt>Evidence</dt><dd>{evidence?.coverage || selected.card.evidence_status}. {evidence?.claims.length ? `${evidence.claims.length} claim records.` : 'No external sources attached.'}</dd><dt>Version</dt><dd>{selected.id.slice(0, 8)} (immutable)</dd><dt>Lineage</dt><dd>{edges.filter((edge) => edge.child_version_id === selected.id).length ? edges.filter((edge) => edge.child_version_id === selected.id).map((edge) => <button className="parent-link" key={edge.parent_version_id} onClick={() => setSelectedId(edge.parent_version_id)} type="button">{edge.edge_kind}: {ideas.find((idea) => idea.id === edge.parent_version_id)?.card.name || edge.parent_version_id.slice(0, 8)}</button>) : 'Initial direction from confirmed context.'}</dd></dl>
               <label className="compare-picker">Second version for comparison or combination<select aria-label="Second idea" value={compared?.id || ''} onChange={(event) => setCompareId(event.target.value)}><option value="">Choose a distinct version</option>{ideas.filter((idea) => idea.id !== selected.id).map((idea) => <option key={idea.id} value={idea.id}>{idea.card.name} ({idea.strategy.replaceAll('_', ' ')})</option>)}</select></label>
               <div className="action-stack">{actionCommands.map((action) => <button disabled={busy || Boolean(activeJob)} key={action.command} onClick={() => void runAction(action.command)} type="button">{action.label}</button>)}<button disabled={busy || Boolean(activeJob) || !compared} onClick={() => void combineSelected()} type="button">Combine selected versions</button><button className="primary" disabled={busy || Boolean(activeJob)} onClick={() => void createBlueprint()} type="button">Create blueprint</button></div>
               <p className="action-note">Branching keeps the parent. Challenge records critique. Combining creates a child with two parents. Pin and reject change only workspace decisions.</p>
@@ -644,3 +656,4 @@ export function App() {
     </main>
   );
 }
+
