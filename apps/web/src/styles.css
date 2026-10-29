@@ -875,6 +875,45 @@ button:focus-visible, a:focus-visible, select:focus-visible { outline: 2px solid
 .landing-disclosure { color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; margin: 0; padding: 20px clamp(20px, 4vw, 72px); }
 @keyframes orbit-breathe { to { transform: rotate(9deg) scale(1.025); } }
 
+.motion-sequence { border-top: 1px solid var(--border-strong); padding: 80px clamp(20px, 4vw, 72px) 60px; }
+.motion-sequence-intro { max-width: 900px; padding-bottom: 75px; }
+.motion-sequence-intro h2 { font-family: var(--font-display); font-size: clamp(44px, 6vw, 90px); letter-spacing: -.07em; line-height: 1; margin: 28px 0; }
+.motion-sequence-intro p { color: var(--text-secondary); font-size: 18px; line-height: 1.5; max-width: 46ch; }
+.motion-scene { align-items: center; border-top: 1px solid var(--border-strong); display: grid; gap: clamp(22px, 5vw, 90px); grid-template-columns: minmax(210px, .6fr) minmax(0, 1.4fr); min-height: 540px; padding: 48px 0; }
+.motion-scene-caption { align-self: center; }
+.motion-scene-caption > span, .motion-graphic-label, .motion-disclosure { color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; letter-spacing: .09em; }
+.motion-scene-caption h3 { font-family: var(--font-display); font-size: clamp(36px, 4.8vw, 70px); letter-spacing: -.07em; line-height: 1.02; margin: 25px 0; }
+.motion-scene-caption p { color: var(--text-secondary); line-height: 1.6; max-width: 33ch; }
+.motion-graphic { background: var(--bg-secondary); border: 1px solid var(--border-subtle); min-width: 0; overflow: hidden; position: relative; }
+.motion-graphic::before { background: linear-gradient(90deg, transparent, var(--accent-subtle), transparent); content: ''; height: 1px; left: 0; position: absolute; right: 0; top: 50%; }
+.motion-graphic svg { display: block; width: 100%; }
+.motion-graphic-label { bottom: 18px; left: 22px; position: absolute; }
+.motion-graphic text { fill: var(--text-primary); font-family: var(--font-mono); font-size: 12px; letter-spacing: 2px; }
+.motion-halo { fill: none; stroke: var(--border-strong); stroke-width: 1; }
+.motion-line { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 420; stroke-dashoffset: 420; opacity: .68; }
+.motion-center { fill: var(--accent-subtle); stroke: var(--accent); stroke-width: 2; }
+.motion-node { fill: var(--accent); opacity: .24; transform-box: fill-box; transform-origin: center; }
+.motion-signal .motion-line:not(.motion-line-one), .motion-signal .motion-node:not(.motion-node-one) { display: none; }
+.motion-field .motion-line-four, .motion-field .motion-node-four { display: none; }
+.motion-resolve .motion-node-three { fill: var(--text-primary); }
+.motion-scene.is-visible .motion-line { animation: motion-draw 1.1s ease-out forwards; }
+.motion-scene.is-visible .motion-line-two { animation-delay: .18s; }
+.motion-scene.is-visible .motion-line-three { animation-delay: .36s; }
+.motion-scene.is-visible .motion-line-four { animation-delay: .54s; }
+.motion-scene.is-visible .motion-node { animation: motion-emerge .55s ease-out both; animation-delay: .65s; }
+.motion-scene.is-visible .motion-node-two { animation-delay: .8s; }
+.motion-scene.is-visible .motion-node-three { animation-delay: .95s; }
+.motion-scene.is-visible .motion-node-four { animation-delay: 1.1s; }
+.motion-scene.is-visible .motion-scene-caption { animation: motion-settle .7s ease-out both; }
+.motion-disclosure { border-top: 1px solid var(--border-subtle); margin: 0; padding-top: 22px; }
+@keyframes motion-draw { to { stroke-dashoffset: 0; } }
+@keyframes motion-emerge { from { opacity: 0; transform: scale(.25); } to { opacity: 1; transform: scale(1); } }
+@keyframes motion-settle { from { filter: blur(8px); opacity: .55; transform: translateY(18px); } to { filter: blur(0); opacity: 1; transform: translateY(0); } }
+@media (max-width: 768px) { .motion-sequence { padding-top: 62px; } .motion-sequence-intro { padding-bottom: 40px; } .motion-scene { gap: 18px; grid-template-columns: 1fr; min-height: 0; padding: 42px 0 56px; } .motion-scene-caption h3 { margin: 14px 0; } .motion-graphic { max-width: 750px; width: 100%; } }
+@media (prefers-reduced-motion: reduce) { .motion-scene.is-visible .motion-line, .motion-scene.is-visible .motion-node, .motion-scene.is-visible .motion-scene-caption { animation: none !important; } .motion-line { stroke-dashoffset: 0; } .motion-node { opacity: 1; } }
+
+
+
 .studio-shell { grid-template-columns: clamp(205px, 17vw, 270px) minmax(0, 1fr) clamp(270px, 22vw, 360px); }
 .stage-rail { padding: 26px 18px; }
 .rail-context { border-bottom: 1px solid var(--border-strong); margin-bottom: 30px; padding-bottom: 22px; }
